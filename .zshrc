@@ -1,4 +1,3 @@
-source ~/dotfiles/.secrets
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 export PGHOST=localhost
 
@@ -54,3 +53,32 @@ if [ -f "~/dotfiles/local/.env" ]
 then
     source ~/dotfiles/local/.env
 fi
+
+# eval $(thefuck --alias)
+
+# tabtab source for serverless package
+# uninstall by removing these lines or running `tabtab uninstall serverless`
+[[ -f /usr/local/lib/node_modules/serverless/node_modules/tabtab/.completions/serverless.zsh ]] && . /usr/local/lib/node_modules/serverless/node_modules/tabtab/.completions/serverless.zsh
+# tabtab source for sls package
+# uninstall by removing these lines or running `tabtab uninstall sls`
+[[ -f /usr/local/lib/node_modules/serverless/node_modules/tabtab/.completions/sls.zsh ]] && . /usr/local/lib/node_modules/serverless/node_modules/tabtab/.completions/sls.zsh
+
+export PATH="/usr/local/opt/python/libexec/bin:$PATH"
+export PATH="/usr/local/opt/icu4c/bin:$PATH"
+export PATH="/usr/local/opt/icu4c/sbin:$PATH"
+export PATH="/usr/local/opt/node@8/bin:$PATH"
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+export JAVA_HOME=$(/usr/libexec/java_home)
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
+
+# export PATH=$PATH:/usr/local/mysql/bin
+export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
+export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
+export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
+
+export PATH="/usr/local/opt/node@12/bin:$PATH"
+
+source /usr/local/opt/git-extras/share/git-extras/git-extras-completion.zsh
