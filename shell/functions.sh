@@ -95,3 +95,14 @@ function extract() {
     cat $tmpfile;
     rm -f $tmpfile;
 }
+
+# opens the given location
+function c() {
+        if [ $# -eq 0 ]; then
+                code .
+        else
+                code "$@"
+        fi
+}
+
+# TODO: Kill port

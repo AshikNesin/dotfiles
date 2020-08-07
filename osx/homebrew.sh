@@ -35,6 +35,10 @@ usefull_pkg=(
 	asciinema
 	mysql
 	mongodb
+	bat
+	prettyping
+	noti
+
 )
 
 usefull_cask=(
@@ -48,6 +52,8 @@ usefull_cask=(
 	awareness
 	cloudapp
 	discord
+	toggldesktop
+	unetbootin
 )
 
 brew install ${usefull_pkg[@]}
@@ -98,3 +104,4 @@ brew services start mongodb
 # clean things up
 brew cleanup
 brew cask cleanup
+

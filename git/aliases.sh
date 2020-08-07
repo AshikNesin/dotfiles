@@ -29,3 +29,12 @@ alias grmb="git push origin --delete"
 alias gr='[ ! -z `git rev-parse --show-cdup` ] && cd `git rev-parse --show-cdup || pwd`'
 
 alias ginit='git init && gi osx,node && gca "Init Commit"'
+alias rollback="git reset --hard HEAD  && git clean -d -f -f"
+alias gcd="git checkout develop"
+alias brm="git branch -d"
+alias gbr="git_create_new_branch"
+alias pullbr="git_pull_origin_branch"
+alias cloneb="git clone -b "
+alias rb="rollback"
+alias dff="git diff --name-only "
+alias pulls="git pull --recurse-submodules"

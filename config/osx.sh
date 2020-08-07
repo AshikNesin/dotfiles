@@ -348,6 +348,8 @@ defaults write com.apple.commerce AutoUpdateRestartRequired -bool false
 # Prevent Photos from opening automatically when devices are plugged in
 defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 
+# Disable Gate keeper (http://osxdaily.com/2016/09/27/allow-apps-from-anywhere-macos-gatekeeper/)
+sudo spctl --master-disable
 
 ###############################################################################
 # Kill affected applications                                                  #

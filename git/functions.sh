@@ -68,3 +68,50 @@ function g() {
 gi() {
   curl -s "https://www.toptal.com/developers/gitignore/api/$*" > .gitignore
 }
+
+function git_create_new_branch() {
+ git checkout -b "$1" develop
+}
+
+function git_pull_origin_branch() {
+  # git fetch <remote> <rbranch>:<lbranch> 
+  git fetch origin "$1":"$1"
+}
+
+#.# Better Git Logs.
+### Using EMOJI-LOG (https://github.com/ahmadawais/Emoji-Log).
+
+# Git Commit, Add all, and Push — in one step.
+# function gcap() {
+# 	git add . && git commit -m "$*" && git push
+# }
+
+# NEW.
+function gnew() {
+	git_commit_all "📦 NEW: $@"
+}
+
+# IMPROVE.
+function gimp() {
+	git_commit_all "👌 IMPROVE: $@"
+}
+
+# FIX.
+function gfix() {
+	git_commit_all "🐛 FIX: $@"
+}
+
+# RELEASE.
+function grlz() {
+	git_commit_all "🚀 RELEASE: $@"
+}
+
+# DOC.
+function gdoc() {
+	git_commit_all "📖 DOC: $@"
+}
+
+# TEST.
+function gtst() {
+	git_commit_all "✅ TEST: $@"
+}
