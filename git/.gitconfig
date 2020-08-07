@@ -1,0 +1,27 @@
+[user]
+	name = Ashik Nesin
+	email = mail@ashiknesin.com
+[credential]
+	helper = cache --timeout=99999
+
+# push easily. http://stackoverflow.com/a/23918418/89484
+[push]
+	default = current
+
+[color]
+	ui = true
+[alias]
+	co = checkout
+	br = branch
+	ct = commit
+	cln = git clean -df
+	unstage = reset HEAD --
+	undo = reset --soft HEAD^
+	# Amend the currently staged files to the latest commit
+	amend = commit --amend --reuse-message=HEAD
+	put = commit --amend --no-edit
+[url "git@github.com:AshikNesin/"]
+  insteadOf = "git://github.com/AshikNesin/"
+[core]
+	editor = vim
+	excludesfile = ~/dotfiles/git/.gitignore
