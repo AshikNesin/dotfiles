@@ -151,3 +151,4 @@ alias update='sudo softwareupdate --install --all \
                    && npm update -g'
 alias ssh="sshrc"
 alias rn="react-native"
+alias :q="exit"
