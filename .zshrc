@@ -49,9 +49,14 @@ source ~/.profile
 autoload -U promptinit; promptinit
 prompt pure
 
-if [ -f "~/dotfiles/local/.env" ]
+if [ -f "$HOME/dotfiles/local/.env" ]
 then
     source ~/dotfiles/local/.env
+fi
+
+if [ -f "$HOME/dotfiles/local/.alias" ]
+then
+    source ~/dotfiles/local/.alias
 fi
 
 # eval $(thefuck --alias)
