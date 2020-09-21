@@ -115,3 +115,17 @@ function gdoc() {
 function gtst() {
 	git_commit_all "✅ TEST: $@"
 }
+
+# Delete git branch in local & remote (https://github.com/gokulkrishh/dotfiles/blob/master/oh-my-zsh/aliases)
+function gbd {
+  # Branch name present?
+  if [[ -z "$1" ]]; then
+    echo "\n🤔 Oops… you forgot to provide the branch name"
+    echo "👉 E.g. gbdel branch_name\n"
+  else
+    echo "\n⏳ Deleting…\n"
+    git branch -D "$1" # Local delete.
+    git push origin --delete "$1" # Remote delete.
+    echo "\n✅ Git branch $1 was deleted from local and remote.\n"
+  fi
+}

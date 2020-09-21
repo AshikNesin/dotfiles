@@ -2,8 +2,7 @@
 	name = Ashik Nesin
 	email = mail@ashiknesin.com
 [credential]
-	helper = cache --timeout=99999
-
+	helper = cache --timeout=9999
 # push easily. http://stackoverflow.com/a/23918418/89484
 [push]
 	default = current
@@ -25,3 +24,5 @@
 [core]
 	editor = vim
 	excludesfile = ~/dotfiles/git/.gitignore
+[pull]
+	rebase = false
