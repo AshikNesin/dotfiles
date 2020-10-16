@@ -69,13 +69,27 @@ gi() {
   curl -s "https://www.toptal.com/developers/gitignore/api/$*" > .gitignore
 }
 
+
 function git_create_new_branch() {
  git checkout -b "$1" develop
 }
 
 function git_pull_origin_branch() {
+  if [[ -z "$1" ]]; then
+    current_branch=`git branch --show-current`
+  else
+      current_branch="$1"
+  fi
+  echo "\n⏳ Pulling latest changes from $current_branch (origin)\n"
+  
+  git pull origin "$current_branch"
+
+}
+
+function git_pull_origin_submodules() {
   # git fetch <remote> <rbranch>:<lbranch> 
-  git fetch origin "$1":"$1"
+  # git pull origin "$1" --recurse-submodules
+    git_pull_origin_branch  --recurse-submodules
 }
 
 #.# Better Git Logs.
@@ -117,15 +131,15 @@ function gtst() {
 }
 
 # Delete git branch in local & remote (https://github.com/gokulkrishh/dotfiles/blob/master/oh-my-zsh/aliases)
-function gbd {
+function gdb {
   # Branch name present?
   if [[ -z "$1" ]]; then
     echo "\n🤔 Oops… you forgot to provide the branch name"
-    echo "👉 E.g. gbdel branch_name\n"
+    echo "👉 E.g. gdb branch_name\n"
   else
     echo "\n⏳ Deleting…\n"
     git branch -D "$1" # Local delete.
-    git push origin --delete "$1" # Remote delete.
-    echo "\n✅ Git branch $1 was deleted from local and remote.\n"
+    # git push origin --delete "$1" # Remote delete.
+    echo "\n✅ Git branch $1 was deleted from local\n"
   fi
 }

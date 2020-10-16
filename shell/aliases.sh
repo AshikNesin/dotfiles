@@ -152,3 +152,5 @@ alias update='sudo softwareupdate --install --all \
 alias ssh="sshrc"
 alias rn="react-native"
 alias :q="exit"
+alias dcu="docker-compose up"
+alias cat="bat"

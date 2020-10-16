@@ -16,7 +16,8 @@ alias br='git branch'
 alias st='git status'
 alias fetch='git fetch'
 alias push='git push origin'
-alias pull='git pull'
+alias pull='git_pull_origin_branch'
+alias pulls='git_pull_origin_submodules'
 alias gpu="git pull upstream master"
 alias pusht="git push --tags"
 # Update Remote url
@@ -37,4 +38,6 @@ alias pullbr="git_pull_origin_branch"
 alias cloneb="git clone -b "
 alias rb="rollback"
 alias dff="git diff --name-only "
-alias pulls="git pull --recurse-submodules"
+# alias pulls="git pull --recurse-submodules"
+alias git_current_branch="git branch --show-current"
+alias gclean="git branch | grep -v "master" | xargs git branch -d"
