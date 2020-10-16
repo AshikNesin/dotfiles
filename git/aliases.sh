@@ -41,3 +41,5 @@ alias dff="git diff --name-only "
 # alias pulls="git pull --recurse-submodules"
 alias git_current_branch="git branch --show-current"
 alias gclean="git branch | grep -v "master" | xargs git branch -d"
+# https://twitter.com/wesbos/status/1217849767579062272
+alias gresolve="git diff --name-only | uniq | xargs code" 
