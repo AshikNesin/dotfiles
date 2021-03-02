@@ -92,6 +92,10 @@ function git_pull_origin_submodules() {
     git_pull_origin_branch  --recurse-submodules
 }
 
+function git_search_tag(){
+  git tag | egrep $@
+}
+
 #.# Better Git Logs.
 ### Using EMOJI-LOG (https://github.com/ahmadawais/Emoji-Log).
 

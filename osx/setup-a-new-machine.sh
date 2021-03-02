@@ -26,3 +26,10 @@ ln -s ~/dotfiles/.zshrc ~/.zshrc
 
 ln -sf ~/dotfiles/git/.gitconfig ~/.gitconfig
 ln -sf ~/dotfiles/git/.gitignore ~/.gitignore
+
+ln -sf ~/dotfiles/local/.aws ~/.aws
+
+cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts
+
+ln -sf ~/dotfiles/local/.gauth ~/.gauth
+ln -sf ~/dotfiles/local/.git-credentials ~/.git-credentials

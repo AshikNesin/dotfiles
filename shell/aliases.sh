@@ -30,10 +30,10 @@ export VISUAL="subl"
 
     if command -v 'brew' &> /dev/null; then
         alias brewd='brew doctor'
-        alias brewi='brew install'
+        alias brewi='brew install '
         alias brewr='brew uninstall'
         alias brews='brew search'
-		alias bci="brew cask install"
+		alias cask="brew install --cask "
         alias brewu='brew update \
                       && brew upgrade --all \
                       && brew cleanup \
@@ -154,3 +154,4 @@ alias rn="react-native"
 alias :q="exit"
 alias dcu="docker-compose up"
 alias cat="bat"
+alias nd="npm run dev"

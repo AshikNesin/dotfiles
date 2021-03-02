@@ -3,3 +3,8 @@
 
 # ----- quick look plugins - https://github.com/sindresorhus/quick-look-plugins -----
 qlcolorcode qlstephen qlmarkdown quicklook-json qlimagesize suspicious-package quicklookase qlvideo
+
+
+cask iina
+
+cask tower

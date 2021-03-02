@@ -2,7 +2,7 @@
 	name = Ashik Nesin
 	email = mail@ashiknesin.com
 [credential]
-	helper = cache --timeout=9999
+	helper = store
 # push easily. http://stackoverflow.com/a/23918418/89484
 [push]
 	default = current
@@ -11,7 +11,10 @@
 	ui = true
 [alias]
 	co = checkout
-	br = branch
+	br = branch --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(contents:subject) %(color:green)(%(committerdate:relative)) [%(authorname)]' --sort=-committerdate
+	rao = remote add origin
+	new = !sh -c 'git log $1@{1}..$1@{0} "$@"' #Commits came in since last command
+
 	ct = commit
 	cln = git clean -df
 	unstage = reset HEAD --
@@ -19,6 +22,8 @@
 	# Amend the currently staged files to the latest commit
 	amend = commit --amend --reuse-message=HEAD
 	put = commit --amend --no-edit
+	del = "branch -D"
+	save = !git add -A && git commit -m 'chore: commit save point'
 [url "git@github.com:AshikNesin/"]
   insteadOf = "git://github.com/AshikNesin/"
 [core]
@@ -31,3 +36,5 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+[credential "github.com"]
+	useHttpPath = true

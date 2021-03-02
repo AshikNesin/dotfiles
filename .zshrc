@@ -43,7 +43,10 @@ source ~/dotfiles/git/aliases.sh
 source ~/dotfiles/utils/z/z.sh
 
 # others
+if [ -f "$HOME/dotfiles/.profile" ]
+then
 source ~/.profile
+fi
 
 ### Pure
 autoload -U promptinit; promptinit
@@ -75,15 +78,17 @@ export PATH="/usr/local/opt/node@8/bin:$PATH"
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export JAVA_HOME=$(/usr/libexec/java_home)
+# export JAVA_HOME=$(/usr/libexec/java_home)
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
 
 # export PATH=$PATH:/usr/local/mysql/bin
-export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
-export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
 export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
 
 export PATH="/usr/local/opt/node@12/bin:$PATH"
 
 source /usr/local/opt/git-extras/share/git-extras/git-extras-completion.zsh
+export PATH="/usr/local/opt/ncurses/bin:$PATH"
+
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
