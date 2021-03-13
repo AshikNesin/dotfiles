@@ -33,3 +33,4 @@ cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts
 
 ln -sf ~/dotfiles/local/.gauth ~/.gauth
 ln -sf ~/dotfiles/local/.git-credentials ~/.git-credentials
+ln -sf ~/dotfiles/local/.ssh ~/.ssh

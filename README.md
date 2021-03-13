@@ -3,7 +3,14 @@
 ```
 chmod +x ~/dotfiles/osx/setup-a-new-machine.sh
 sh ~/dotfiles/osx/setup-a-new-machine.sh
+
 ```
+
+# Local Bin
+```sh
+chmod -R +x ~/dotfiles/bin
+```
+
 
 ## Acknowledgements
 

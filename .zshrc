@@ -81,7 +81,9 @@ export PATH="/usr/local/opt/node@8/bin:$PATH"
 # export JAVA_HOME=$(/usr/libexec/java_home)
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
+
 
 # export PATH=$PATH:/usr/local/mysql/bin
 export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
@@ -92,3 +94,7 @@ source /usr/local/opt/git-extras/share/git-extras/git-extras-completion.zsh
 export PATH="/usr/local/opt/ncurses/bin:$PATH"
 
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+
+export PATH="/usr/local/opt/node@14/bin:$PATH"
+
+
