@@ -24,6 +24,7 @@
 	put = commit --amend --no-edit
 	del = "branch -D"
 	save = !git add -A && git commit -m 'chore: commit save point'
+	update-url=remote set-url origin 
 [url "git@github.com:AshikNesin/"]
   insteadOf = "git://github.com/AshikNesin/"
 [core]
