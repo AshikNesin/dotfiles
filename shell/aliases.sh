@@ -150,7 +150,6 @@ alias update='sudo softwareupdate --install --all \
                    && brew cleanup \
                    && npm install -g npm \
                    && npm update -g'
-alias ssh="sshrc"
 alias rn="react-native"
 alias :q="exit"
 alias dcu="docker-compose up"
