@@ -107,3 +107,11 @@ function c() {
 
 ## Kill a port
 killport() { lsof -i tcp:"$*" | awk 'NR!=1 {print $2}' | xargs kill -9 ;}
+
+
+pdf-unencrypt () {
+    : "Usage: <file> <password> Uses qpdf to rewrite the file without encryption."
+    local file="$1"
+    local password="$2"
+    qpdf --decrypt   --replace-input "$file" --password="$password" 
+}
