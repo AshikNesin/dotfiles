@@ -97,8 +97,8 @@ export VISUAL="subl"
 # Services
 	alias stms='brew services start mysql'
 	alias spms='brew services stop mysql'
-	alias stmd='brew services start mongodb'
-	alias spmd='brew services stop mongodb'
+	alias stmd='brew services start mongodb-community'
+	alias spmd='brew services stop mongodb-community'
 
 # Pretty print the path
 

@@ -1,6 +1,6 @@
 [user]
 	name = Ashik Nesin
-	email = ashik@chargebee.com
+	email = mail@ashiknesin.com
 [credential]
 	helper = store
 # push easily. http://stackoverflow.com/a/23918418/89484
@@ -29,9 +29,11 @@
 	dummy=!sh -c 'git commit --allow-empty -m "dummy commit"'
 [url "git@github.com:AshikNesin/"]
   insteadOf = "git://github.com/AshikNesin/"
+[url "git@github.com:HugeThoughts/"]
+  insteadOf = "git://github.com/HugeThoughts/"
 [url "git@cbgit:chargebee/"]
   insteadOf = "git@github.com:chargebee/"
- [url "git@cbgit:cb-ashik/"]
+[url "git@cbgit:cb-ashik/"]
   insteadOf = "git@github.com:cb-ashik/"
 [core]
 	editor = vim

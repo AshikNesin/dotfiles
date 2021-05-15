@@ -96,5 +96,4 @@ export PATH="/usr/local/opt/ncurses/bin:$PATH"
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
 
 export PATH="/usr/local/opt/node@14/bin:$PATH"
-
-
+export ANDROID_SDK_ROOT=/Users/cb-ashik/Library/Android/sdk
