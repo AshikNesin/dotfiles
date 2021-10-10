@@ -46,3 +46,4 @@ Thumbs.db
 
 .secrets
 local/*
+.stfolder/*

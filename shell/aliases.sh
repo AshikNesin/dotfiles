@@ -155,3 +155,6 @@ alias :q="exit"
 alias dcu="docker-compose up"
 alias cat="bat"
 alias nd="npm run dev"
+if command -v 'htop' &> /dev/null; then
+		alias top="htop"
+	fi

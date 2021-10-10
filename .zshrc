@@ -96,4 +96,13 @@ export PATH="/usr/local/opt/ncurses/bin:$PATH"
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
 
 export PATH="/usr/local/opt/node@14/bin:$PATH"
-export ANDROID_SDK_ROOT=/Users/cb-ashik/Library/Android/sdk
+export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk
+
+# #### FIG ENV VARIABLES ####
+# [[ -s ~/.fig/fig.sh ]] && source ~/.fig/fig.sh
+# #### END FIG ENV VARIABLES ####
+
+export GOPATH=$HOME/go
+export GOROOT="$(brew --prefix golang)/libexec"
+export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
+

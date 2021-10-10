@@ -43,3 +43,5 @@ alias git_current_branch="git branch --show-current"
 alias gclean="git branch | grep -v "master" | xargs git branch -d"
 # https://twitter.com/wesbos/status/1217849767579062272
 alias gresolve="git diff --name-only | uniq | xargs code" 
+alias gd="git pull origin develop"
+alias gm="git pull origin master"
