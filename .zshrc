@@ -6,6 +6,10 @@ export ZSH=~/.oh-my-zsh
 
 ZSH_THEME="robbyrussell"
 
+# https://github.com/sindresorhus/pure
+autoload -U promptinit; promptinit
+prompt pure
+
 
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
@@ -105,4 +109,3 @@ export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk
 export GOPATH=$HOME/go
 export GOROOT="$(brew --prefix golang)/libexec"
 export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
-

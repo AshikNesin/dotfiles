@@ -47,3 +47,5 @@
 	required = true
 [credential "github.com"]
 	useHttpPath = true
+[init]
+	defaultBranch = main
