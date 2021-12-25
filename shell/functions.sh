@@ -115,3 +115,24 @@ pdf-unencrypt () {
     local password="$2"
     qpdf --decrypt   --replace-input "$file" --password="$password" 
 }
+
+
+# usage: installdmg https://example.com/path/to/pkg.dmg
+function installdmg {
+    set -x
+    tempd=$(mktemp -d)
+    curl -L $1 > $tempd/pkg.dmg
+    listing=$(sudo hdiutil attach $tempd/pkg.dmg | grep Volumes)
+    echo $listing
+    volume=$(echo "$listing" | cut -f 3)
+    if [ -e "$volume"/*.app ]; then
+      sudo cp -rf "$volume"/*.app /Applications
+    elif [ -e "$volume"/*.pkg ]; then
+      package=$(ls -1 "$volume" | grep .pkg | head -1)
+      sudo installer -pkg "$volume"/"$package" -target /
+    fi
+    echo "$(echo "$listing" | cut -f 1 | xargs)"
+    sudo hdiutil detach "$(echo "$listing" | cut -f 1 | xargs)"
+    rm -rf $tempd
+    set +x
+}

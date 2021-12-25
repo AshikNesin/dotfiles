@@ -31,6 +31,8 @@ export VISUAL="subl"
     if command -v 'brew' &> /dev/null; then
         alias brewd='brew doctor'
         alias brewi='brew install '
+        alias bi='brew install '
+
         alias brewr='brew uninstall'
         alias brews='brew search'
 		alias cask="brew install --cask "

@@ -7,8 +7,8 @@ export ZSH=~/.oh-my-zsh
 ZSH_THEME="robbyrussell"
 
 # https://github.com/sindresorhus/pure
-autoload -U promptinit; promptinit
-prompt pure
+# autoload -U promptinit; promptinit
+# prompt pure
 
 
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
@@ -52,9 +52,6 @@ then
 source ~/.profile
 fi
 
-### Pure
-autoload -U promptinit; promptinit
-prompt pure
 
 if [ -f "$HOME/dotfiles/local/.env" ]
 then
@@ -94,7 +91,7 @@ export PATH="/usr/local/opt/mysql@5.6/bin:$PATH"
 
 export PATH="/usr/local/opt/node@12/bin:$PATH"
 
-source /usr/local/opt/git-extras/share/git-extras/git-extras-completion.zsh
+[[ -r "/usr/local/opt/git-extras/share/git-extras/git-extras-completion.zsh" ]] && source /usr/local/opt/git-extras/share/git-extras/git-extras-completion.zsh
 export PATH="/usr/local/opt/ncurses/bin:$PATH"
 
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
@@ -108,4 +105,4 @@ export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk
 
 export GOPATH=$HOME/go
 export GOROOT="$(brew --prefix golang)/libexec"
-export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
+export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"export PATH="/opt/homebrew/opt/node@14/bin:$PATH"
