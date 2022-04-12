@@ -44,8 +44,8 @@ export VISUAL="subl"
     fi
 
 # npm
-    if command -v 'npm' &> /dev/null; then
-		alias npmi="npm install"
+    # if command -v 'npm' &> /dev/null; then
+		alias npmi="npm install --no-fund"
 		alias npmd="npm run dev"
 		alias npmg="npm install -g"
 		alias npmid="npm install --save-dev"
@@ -53,7 +53,7 @@ export VISUAL="subl"
 		alias npmr="npm uninstall"
 		alias npmrg="npm uninstall -g"
 		alias nom="rm -rf node_modules && npm cache clear && npm i"
-	fi
+	# fi
 	alias nn="npm-name"
 	alias ns="npm start"
 	alias y="yarn add"
@@ -160,3 +160,5 @@ alias nd="npm run dev"
 if command -v 'htop' &> /dev/null; then
 		alias top="htop"
 	fi
+alias node12='export PATH="$PATH:/usr/local/opt/node@12/bin"; node -v'
+

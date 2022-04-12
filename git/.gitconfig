@@ -65,3 +65,5 @@
 	old = red bold
 	new = green bold
 	whitespace = red reverse
+[maintenance]
+	repo = /Users/cb-it-01-1494/work/chargebee-ui
