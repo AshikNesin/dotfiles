@@ -6,7 +6,7 @@ const {
   readJsonFromCsvFile,
   writeJsonToCsvFile,
   runShellCmd,
-} = require("./../helpers");
+} = require("../helpers");
 
 const type = process.argv[2];
 const args = process.argv.slice(3);
@@ -34,7 +34,13 @@ if (typeMapper[type] === undefined) {
 const fileName = typeMapper[type].fileName;
 const installCmd = typeMapper[type].installCmd;
 
-const csvPath = path.join(process.cwd(), "config", "apps", fileName);
+const csvPath = path.join(
+  __dirname.split("/scripts")[0],
+  "config",
+  "apps",
+  fileName
+);
+console.log(csvPath);
 const date = new Date().toISOString().split("T")[0];
 
 (async () => {

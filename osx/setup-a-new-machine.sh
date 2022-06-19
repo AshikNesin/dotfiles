@@ -1,9 +1,6 @@
 #!/bin/bash
 
     
-# ssh-keygen -t rsa -b 4096 -C "mail@ashiknesin.com"
-touch ~/.hushlogin # https://ashokgelal.com/2017/01/04/til-iterm-hush-last-login/
-
 chmod -R +x ~/dotfiles/bin
 
 
@@ -31,6 +28,4 @@ ln -sf ~/dotfiles/local/.aws ~/.aws
 
 cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts
 
-ln -sf ~/dotfiles/local/.gauth ~/.gauth
-ln -sf ~/dotfiles/local/.git-credentials ~/.git-credentials
 ln -sf ~/dotfiles/local/.ssh ~/.ssh

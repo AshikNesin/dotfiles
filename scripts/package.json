@@ -1,7 +1,12 @@
 {
   "name": "dotfiles",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "description": "Ashik's Dotfiles",
   "main": "index.js",
+  "bin": {
+    "install-app": "./bin/install-app.js"
+  },
+  "preferGlobal": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
