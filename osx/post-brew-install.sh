@@ -4,3 +4,7 @@
  dockutil --remove all
 
 npm i -g ~/dotfiles/scripts
+
+# brew services start mysql
+
+# brew services start mongodb-community

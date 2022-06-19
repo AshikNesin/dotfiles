@@ -104,35 +104,6 @@ function git_search_tag(){
 # 	git add . && git commit -m "$*" && git push
 # }
 
-# NEW.
-function gnew() {
-	git_commit_all "📦 NEW: $@"
-}
-
-# IMPROVE.
-function gimp() {
-	git_commit_all "👌 IMPROVE: $@"
-}
-
-# FIX.
-function gfix() {
-	git_commit_all "🐛 FIX: $@"
-}
-
-# RELEASE.
-function grlz() {
-	git_commit_all "🚀 RELEASE: $@"
-}
-
-# DOC.
-function gdoc() {
-	git_commit_all "📖 DOC: $@"
-}
-
-# TEST.
-function gtst() {
-	git_commit_all "✅ TEST: $@"
-}
 
 # Delete git branch in local & remote (https://github.com/gokulkrishh/dotfiles/blob/master/oh-my-zsh/aliases)
 function gdb {

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+# Copy w/ progress
+rsync -WavP --human-readable --progress $1 $2

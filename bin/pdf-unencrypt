@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Usage: <file> <password> Uses qpdf to rewrite the file without encryption.
+local file="$1"
+local password="$2"
+qpdf --decrypt   --replace-input "$file" --password="$password" 

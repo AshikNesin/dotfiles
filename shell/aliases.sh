@@ -59,26 +59,11 @@ export VISUAL="subl"
 	alias ns="npm start"
 	alias y="yarn add"
 
-# Rails
 
-    if command -v 'rails' &> /dev/null; then
-		alias b="bundle"
-		alias rsb="rails s -b 0.0.0.0"
-		alias rgm="rails generate model"
-		alias rgc="rails generate controller"
-		alias rgs="rails generate scaffold"
-		alias rdm="rails destroy model"
-		alias rdc="rails destroy controller"
-		alias rds="rails destroy scaffold"
-		alias rkdm="rake db:migrate"
-	fi
 
 # Server Guick Starts
 
 	alias bs="browser-sync start --server --files '**/*.html,**/*.css,**/*.js'"
-	alias live="live-server"
-	alias pys="python -m SimpleHTTPServer 8000"
-	alias phps="php -S localhost:8000"
 
 # Network
 
@@ -92,16 +77,10 @@ export VISUAL="subl"
 	alias f='open -a Finder'
 	alias .e="subl ~/dotfiles"
 	alias dld="aria2c -x 10"
-	alias gdl="gdrive download"
-	alias sshkey="cat ~/.ssh/id_rsa.pub | pbcopy && echo 'Public key copied to clipboard.'"
+	# alias sshkey="cat ~/.ssh/id_rsa.pub | pbcopy && echo 'Public key copied to clipboard.'"
 	alias reload=". ~/.zshrc"
 	alias rm='trash'
 
-# Services
-	alias stms='brew services start mysql'
-	alias spms='brew services stop mysql'
-	alias stmd='brew services start mongodb-community'
-	alias spmd='brew services stop mongodb-community'
 
 # Pretty print the path
 
@@ -111,8 +90,6 @@ export VISUAL="subl"
 # Utility
 
 	alias yt="youtube-dl"
-	# alias ya="get-audio"
-	alias clean-github="remove-github-forks $GITHUB_CLEAN_FORK"
 # ----------------------------------------------------------------------
 # | System                                                            |
 # ----------------------------------------------------------------------
@@ -130,22 +107,13 @@ alias cleanup="find . -name '*.DS_Store' -type f -ls -delete"
 # Also, clear Apple’s System Logs to improve shell startup speed
 alias emptytrash="sudo rm -rfv /Volumes/*/.Trashes; sudo rm -rfv ~/.Trash; sudo rm -rfv /private/var/log/asl/*.asl"
 
-# Hide/show all desktop icons
-alias dt-hide="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
-alias dt-show="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
-
-
-# Hide/Show hidden files in Finder
-alias hide-hidden-files='defaults write com.apple.finder AppleShowAllFiles -bool false && killall Finder'
-alias show-hidden-files='defaults write com.apple.finder AppleShowAllFiles -bool true && killall Finder'
-
 
 # Lock
-alias lock='/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend'
+# alias lock='/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend'
 
 # Sleep Now
 
-alias sleepnow='pmset displaysleepnow'
+# alias sleepnow='pmset displaysleepnow'
 
 alias update='sudo softwareupdate --install --all \
                    && brew update \
@@ -153,7 +121,7 @@ alias update='sudo softwareupdate --install --all \
                    && brew cleanup \
                    && npm install -g npm \
                    && npm update -g'
-alias rn="react-native"
+# alias rn="react-native"
 alias :q="exit"
 alias dcu="docker-compose up"
 alias cat="bat"
