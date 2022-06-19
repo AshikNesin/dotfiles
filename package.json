@@ -1,0 +1,24 @@
+{
+  "name": "dotfiles",
+  "version": "0.0.1",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AshikNesin/dotfiles.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AshikNesin/dotfiles/issues"
+  },
+  "homepage": "https://github.com/AshikNesin/dotfiles#readme",
+  "dependencies": {
+    "csvtojson": "^2.0.10",
+    "json-2-csv": "^3.17.1",
+    "shelljs": "^0.8.5"
+  }
+}

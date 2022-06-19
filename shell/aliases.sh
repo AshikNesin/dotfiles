@@ -31,12 +31,12 @@ export VISUAL="subl"
 
     if command -v 'brew' &> /dev/null; then
         alias brewd='brew doctor'
-        alias brewi='brew install '
+        alias brewi='install-app --brew'
         alias bi='brew install '
 
         alias brewr='brew uninstall'
         alias brews='brew search'
-		alias cask="brew install --cask "
+		alias cask="install-app --cask "
         alias brewu='brew update \
                       && brew upgrade --all \
                       && brew cleanup \
@@ -48,7 +48,7 @@ export VISUAL="subl"
     # if command -v 'npm' &> /dev/null; then
 		alias npmi="npm install --no-fund"
 		alias npmd="npm run dev"
-		alias npmg="npm install -g"
+		alias npmg="install-app --npm"
 		alias npmid="npm install --save-dev"
 		alias npmu="npm update"
 		alias npmr="npm uninstall"
@@ -162,4 +162,3 @@ if command -v 'htop' &> /dev/null; then
 		alias top="htop"
 	fi
 alias node12='export PATH="$PATH:/usr/local/opt/node@12/bin"; node -v'
-
