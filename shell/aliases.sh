@@ -23,6 +23,7 @@ export VISUAL="subl"
 	alias rmd="rm -rf"
 	alias e="$EDITOR"
 	alias v="$VISUAL"
+	alias ls="exa -a"
 
 
 
