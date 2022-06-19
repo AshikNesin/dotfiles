@@ -7,19 +7,21 @@ sh ~/dotfiles/osx/setup-a-new-machine.sh
 ```
 
 # Local Bin
+
 ```sh
 chmod -R +x ~/dotfiles/bin
 ```
-
 
 ## Acknowledgements
 
 Inspiration and code was taken from many sources, including:
 
-* [Addy Osmani's](https://github.com/addyosmani)
+- [Addy Osmani's](https://github.com/addyosmani)
   [dotfiles](https://github.com/addyosmani/dotfiles/)
-* [Cătălin’s](https://github.com/alrra)
+- [Cătălin’s](https://github.com/alrra)
   [dotfiles](https://github.com/alrra/dotfiles)
+
+  - https://github.com/nicknisi/dotfiles
 
 ## License
 

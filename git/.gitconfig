@@ -3,21 +3,28 @@
 	email = ashik@chargebee.com
 [credential]
 	helper = store
-# push easily. http://stackoverflow.com/a/23918418/89484
 [push]
+    # push will only do the current branch, not all branches
 	default = current
 
 [color]
 	ui = true
 [alias]
+  # list all aliases
+    la = "!git config -l | grep alias | cut -c 7-"
+	d = "!git diff --ignore-space-at-eol -b -w --ignore-blank-lines -- ':!**/package-lock.json' ':!**/yarn.lock'"
+	undo="git reset --soft HEAD~1"
+    # show what I did today
+    day = "!sh -c 'git log --reverse --no-merges --branches=* --date=local --after=\"yesterday 11:59PM\" --author=\"`git config --get user.name`\"'"
+	# create an empty commit
+    empty = commit --allow-empty
+    cleanup = "!git remote prune origin && git gc && git clean -df && git stash clear"
+    remotes = remote -v
+    cg = "!sh -c 'git ls-files -m | grep $1 | xargs git checkout ' -"
 	co = checkout
+	# current branch
+	cbr = "!git rev-parse --abbrev-ref HEAD"
 	br = branch --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(contents:subject) %(color:green)(%(committerdate:relative)) [%(authorname)]' --sort=-committerdate
-	rao = remote add origin
-	new = !sh -c 'git log $1@{1}..$1@{0} "$@"' #Commits came in since last command
-	ct = commit
-	cln = git clean -df
-	unstage = reset HEAD --
-	undo = reset --soft HEAD^
 	# Amend the currently staged files to the latest commit
 	amend = commit --amend --reuse-message=HEAD
 	put = commit --amend --no-edit
@@ -26,7 +33,6 @@
 	url=!sh -c 'git remote set-url origin git@github.com:AshikNesin/$0.git'
 	set-url=!sh -c 'git remote set-url origin $0'
 	cb-url=!sh -c 'git remote set-url origin git@cbgit:chargebee/$0.git'
-	dummy=!sh -c 'git commit --allow-empty -m "dummy commit"'
 [url "git@github.com:AshikNesin/"]
   insteadOf = "git://github.com/AshikNesin/"
 [url "git@github.com:HugeThoughts/"]
@@ -37,7 +43,7 @@
   insteadOf = "git@github.com:cb-ashik/"
 [core]
 	editor = vim
-	excludesfile = ~/dotfiles/git/.gitignore
+	excludesfile = ~/dotfiles/git/.gitignore_global
 	pager = diff-so-fancy | less --tabs=4 -RFX
 [pull]
 	rebase = false
