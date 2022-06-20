@@ -1,3 +1,10 @@
+## Cloning
+
+```sh
+git clone --recurse-submodules -j8 git@github.com:AshikNesin/dotfiles.git
+
+```
+
 ### Setup New Machine
 
 ```
