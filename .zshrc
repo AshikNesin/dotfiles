@@ -1,3 +1,5 @@
+# Fig pre block. Keep at the top of this file.
+. "$HOME/.fig/shell/zshrc.pre.zsh"
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 export PGHOST=localhost
 
@@ -12,7 +14,7 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git-flow)
+plugins=()
 
 # User configuration
 
@@ -97,10 +99,6 @@ export PATH="/usr/local/opt/ncurses/bin:$PATH"
 export PATH="/usr/local/opt/node@14/bin:$PATH"
 export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk
 
-# #### FIG ENV VARIABLES ####
-# [[ -s ~/.fig/fig.sh ]] && source ~/.fig/fig.sh
-# #### END FIG ENV VARIABLES ####
-
 export GOPATH=$HOME/go
 export GOROOT="$(brew --prefix golang)/libexec"
 export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"export PATH="/opt/homebrew/opt/node@14/bin:$PATH"
@@ -119,3 +117,6 @@ eval "$(op completion zsh)"; compdef _op op
 fpath+=($HOME/dotfiles/utils/pure)
 autoload -U promptinit; promptinit
 prompt pure
+
+# Fig post block. Keep at the bottom of this file.
+. "$HOME/.fig/shell/zshrc.post.zsh"
