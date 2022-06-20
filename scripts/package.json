@@ -4,7 +4,8 @@
   "description": "Ashik's Dotfiles",
   "main": "index.js",
   "bin": {
-    "install-app": "./bin/install-app.js"
+    "install-app": "./bin/install-app.js",
+    "up": "./bin/up.js"
   },
   "preferGlobal": true,
   "scripts": {
