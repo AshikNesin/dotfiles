@@ -6,9 +6,6 @@ export ZSH=~/.oh-my-zsh
 
 ZSH_THEME="robbyrussell"
 
-# https://github.com/sindresorhus/pure
-# autoload -U promptinit; promptinit
-# prompt pure
 
 
 # Which plugins would you like to load? (plugins can be found in ~/.oh-my-zsh/plugins/*)
@@ -36,11 +33,10 @@ export GOPATH=~/go
 
 # shell
 source ~/dotfiles/shell/aliases.sh
-source ~/dotfiles/shell/functions.sh
 # git
 
-source ~/dotfiles/git/functions.sh
-source ~/dotfiles/git/aliases.sh
+source ~/dotfiles/git/git-functions.sh
+source ~/dotfiles/git/git-aliases.sh
 
 # utils
 
