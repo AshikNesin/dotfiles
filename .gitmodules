@@ -1,6 +1,6 @@
 [submodule "utils/pure"]
 	path = utils/pure
-	url = https://github.com/sindresorhus/pure
+	url = https://github.com/sindresorhus/pure.git
 [submodule "utils/z"]
 	path = utils/z
 	url = https://github.com/rupa/z.git
