@@ -22,6 +22,8 @@ alias gpu="git pull upstream master"
 alias pusht="git push --tags"
 # Update Remote url
 alias gru="git remote set-url"
+alias update="git pull origin main"
+
 
 # Undo a `git push`
 alias undopush="git push -f origin HEAD^:master"
