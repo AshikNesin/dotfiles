@@ -114,3 +114,8 @@ if command -v pyenv 1>/dev/null 2>&1; then
 fi
 
 eval "$(op completion zsh)"; compdef _op op
+
+# https://github.com/sindresorhus/pure
+fpath+=($HOME/dotfiles/utils/pure)
+autoload -U promptinit; promptinit
+prompt pure
