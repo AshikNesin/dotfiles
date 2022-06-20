@@ -3,7 +3,11 @@
 # https://github.com/kcrawford/dockutil
  dockutil --remove all
 
-npm i -g ~/dotfiles/scripts
+
+# https://github.com/sindresorhus/quick-look-plugins#catalina-notes
+xattr -r ~/Library/QuickLook
+
+xattr -d -r com.apple.quarantine ~/Library/QuickLook
 
 # brew services start mysql
 

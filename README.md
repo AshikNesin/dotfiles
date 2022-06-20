@@ -9,7 +9,8 @@ sh ~/dotfiles/osx/setup-a-new-machine.sh
 # Local Bin
 
 ```sh
-chmod -R +x ~/dotfiles/bin
+chmod -R +x ~/dotfiles/macos/setup-custom-bin.sh
+sh ~/dotfiles/macos/setup-custom-bin.sh
 ```
 
 ## Acknowledgements

@@ -1,22 +1,9 @@
 #!/bin/bash
 
-if command -v 'brew' &> /dev/null; then
-	# Homebrew is installed
-	echo "  Installing Homebrew for you."
-	ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-fi
+$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)
 
 # Make sure we’re using the latest Homebrew
 brew update
-
-# Upgrade any already-installed formulae
-brew upgrade
-
-# more formualae
-brew tap phinze/homebrew-cask || true
-brew tap caskroom/versions || true
-brew install brew-cask
-
 
 # usefull stuff
 
@@ -104,4 +91,3 @@ brew services start mongodb
 # clean things up
 brew cleanup
 brew cask cleanup
-
