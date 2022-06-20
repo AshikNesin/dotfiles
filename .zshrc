@@ -38,6 +38,8 @@ source ~/dotfiles/shell/aliases.sh
 source ~/dotfiles/git/git-functions.sh
 source ~/dotfiles/git/git-aliases.sh
 
+source ~/dotfiles/shell/function.sh
+
 # utils
 
 source ~/dotfiles/utils/z/z.sh
