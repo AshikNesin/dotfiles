@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-const fs = require("fs");
 const path = require("path");
 
 const {
@@ -73,7 +72,7 @@ const date = new Date().toISOString().split("T")[0];
 
     await writeJsonToCsvFile(resultJson, csvPath);
 
-    // await runShellCmd(`${installCmd} "${args.join(" ")}"`);
+    await runShellCmd(`${installCmd} "${args.join(" ")}"`);
   } catch (error) {
     console.log(error);
   }

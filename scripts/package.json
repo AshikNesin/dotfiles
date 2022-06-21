@@ -5,7 +5,8 @@
   "main": "index.js",
   "bin": {
     "install-app": "./bin/install-app.js",
-    "up": "./bin/up.js"
+    "up": "./bin/up.js",
+    "cbr": "./bin/cbr.js"
   },
   "preferGlobal": true,
   "scripts": {
