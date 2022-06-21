@@ -9,3 +9,4 @@ xattr -d -r com.apple.quarantine ~/Library/QuickLook
 # brew services start mysql
 
 # brew services start mongodb-community
+git remote set-url origin git@github.com:AshikNesin/dotfiles.git
