@@ -24,3 +24,5 @@ ln -sf ~/dotfiles/local/.aws ~/.aws
 cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts
 
 ln -sf ~/dotfiles/local/.ssh ~/.ssh
+
+sh -c '~/dotfiles/local/.ssh/fix-permission.sh'

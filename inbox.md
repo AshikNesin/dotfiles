@@ -1,10 +1,10 @@
 https://pock.dev/
 
- https://calibre-ebook.com/
+https://calibre-ebook.com/
 
- https://protonvpn.com
+https://protonvpn.com
 
- -- HazeOver – dims inactive windows/monitors – https://hazeover.com/
+-- HazeOver – dims inactive windows/monitors – https://hazeover.com/
 
 -- Paste – clipboard manager - https://pasteapp.me/
 
@@ -18,7 +18,10 @@ youtube-dl
 
 https://iina.io/
 
-
 https://github.com/Homebrew/homebrew-bundle
 
 https://intoli.com/blog/ssh-identity-git/
+
+https://linuxhint.com/fix-bad-owners-or-permission-on-ssh-config/
+
+sudo chmod 600 ~/.ssh/config
