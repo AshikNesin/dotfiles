@@ -6,7 +6,7 @@ const writeJsonToCsvFile = async (json, csvPath) => {
     const csv = await converter.json2csvAsync(json);
 
     // print CSV string
-    console.log(csv);
+    // console.log(csv);
 
     // write CSV to a file
     fs.writeFileSync(csvPath, csv);

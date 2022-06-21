@@ -39,7 +39,7 @@ const csvPath = path.join(
   "apps",
   fileName
 );
-console.log(csvPath);
+
 const date = new Date().toISOString().split("T")[0];
 
 (async () => {
@@ -70,9 +70,10 @@ const date = new Date().toISOString().split("T")[0];
       ...(value || {}),
     }));
 
+
     await writeJsonToCsvFile(resultJson, csvPath);
 
-    await runShellCmd(`${installCmd} "${args.join(" ")}"`);
+    await runShellCmd(`${installCmd} ${args.join(" ")}`);
   } catch (error) {
     console.log(error);
   }

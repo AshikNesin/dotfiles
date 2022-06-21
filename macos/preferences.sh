@@ -28,6 +28,8 @@ defaults write com.apple.finder ShowStatusBar -bool true
 # Hide Desktop Icons Completely
 defaults write com.apple.finder CreateDesktop -bool false
 
-
+# Dock
+defaults write com.apple.dock persistent-apps -array
 
 killall Finder;
+killall Dock;
