@@ -2,6 +2,11 @@
 export EDITOR="vim"
 export VISUAL="subl"
 
+exists()
+{
+  command -v "$1" >/dev/null 2>&1
+}
+
 # Navigation
 	alias ..="cd .."
 	alias ...="cd ../.."
@@ -79,8 +84,14 @@ export VISUAL="subl"
 	alias dld="aria2c -x 10"
 	# alias sshkey="cat ~/.ssh/id_rsa.pub | pbcopy && echo 'Public key copied to clipboard.'"
 	alias reload=". ~/.zshrc"
-	alias rm='trash'
 
+# todo, enable trash only if it's available
+
+if exists trash; then
+  alias rm='trash'
+# else
+  # echo 'Your system does not have Bash'
+fi
 
 # Pretty print the path
 

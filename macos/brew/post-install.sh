@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# https://github.com/kcrawford/dockutil
- dockutil --remove all
-
 
 # https://github.com/sindresorhus/quick-look-plugins#catalina-notes
 xattr -r ~/Library/QuickLook

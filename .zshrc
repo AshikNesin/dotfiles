@@ -1,5 +1,10 @@
 # Fig pre block. Keep at the top of this file.
+
+if [ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]
+then
 . "$HOME/.fig/shell/zshrc.pre.zsh"
+fi
+
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 export PGHOST=localhost
 
@@ -99,9 +104,9 @@ export PATH="/usr/local/opt/ncurses/bin:$PATH"
 export PATH="/usr/local/opt/node@14/bin:$PATH"
 export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk
 
-export GOPATH=$HOME/go
-export GOROOT="$(brew --prefix golang)/libexec"
-export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"export PATH="/opt/homebrew/opt/node@14/bin:$PATH"
+# export GOPATH=$HOME/go
+# export GOROOT="$(brew --prefix golang)/libexec"
+# export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"export PATH="/opt/homebrew/opt/node@14/bin:$PATH"
 
 # Python 3
 export PYENV_ROOT="$HOME/.pyenv"
@@ -111,12 +116,19 @@ if command -v pyenv 1>/dev/null 2>&1; then
   eval "$(pyenv init -)"
 fi
 
-eval "$(op completion zsh)"; compdef _op op
 
+if command -v op 1>/dev/null 2>&1; then
+eval "$(op completion zsh)"; compdef _op op
+fi
 # https://github.com/sindresorhus/pure
 fpath+=($HOME/dotfiles/utils/pure)
 autoload -U promptinit; promptinit
 prompt pure
 
 # Fig post block. Keep at the bottom of this file.
+
+if [ -f "$HOME/.fig/shell/zshrc.post.zsh" ]
+then
 . "$HOME/.fig/shell/zshrc.post.zsh"
+fi
+

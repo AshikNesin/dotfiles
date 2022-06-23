@@ -1,0 +1,1 @@
+/bin/bash -c "brew install node@14 iterm2"
