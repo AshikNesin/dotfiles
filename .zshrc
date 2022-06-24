@@ -1,8 +1,9 @@
 # Fig pre block. Keep at the top of this file.
+[[ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]] && . "$HOME/.fig/shell/zshrc.pre.zsh"
+# Fig pre block. Keep at the top of this file.
 
 if [ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]
 then
-. "$HOME/.fig/shell/zshrc.pre.zsh"
 fi
 
 export HOMEBREW_CASK_OPTS="--appdir=/Applications"
@@ -129,6 +130,7 @@ prompt pure
 
 if [ -f "$HOME/.fig/shell/zshrc.post.zsh" ]
 then
-. "$HOME/.fig/shell/zshrc.post.zsh"
 fi
 
+# Fig post block. Keep at the bottom of this file.
+[[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && . "$HOME/.fig/shell/zshrc.post.zsh"
