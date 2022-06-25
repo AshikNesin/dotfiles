@@ -9,3 +9,6 @@ xattr -d -r com.apple.quarantine ~/Library/QuickLook
 # brew services start mysql
 
 # brew services start mongodb-community
+
+# For VSCode VIM
+defaults write com.microsoft.VSCode ApplePressAndHoldEnabled -bool false
