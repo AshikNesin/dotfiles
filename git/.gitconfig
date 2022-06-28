@@ -10,6 +10,8 @@
 [color]
 	ui = true
 [alias]
+	set-work-email="!git config user.email $WORK_EMAIL"
+	set-email="!git config user.email 'mail@ashiknesin.com'"
   # list all aliases
     la = "!git config -l | grep alias | cut -c 7-"
 	d = "!git diff --ignore-space-at-eol -b -w --ignore-blank-lines -- ':!**/package-lock.json' ':!**/yarn.lock'"

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# https://koenwoortman.com/git-faster-branch-checkouts-with-fzf/
+git checkout $(git for-each-ref refs/heads/ --format='%(refname:short)' | fzf)
