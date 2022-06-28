@@ -6,7 +6,7 @@ alias gcd="git clone --depth=1"
 # Based on https://gist.github.com/codejets/519d3287229ed075a025
 alias gaa='git add . && git commit --amend'
 # alias gc="git commit -m"
-alias gc="git checkout"
+alias gc="interactive-checkout"
 alias gcm="git checkout master"
 alias gcb="git checkout -b"
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"

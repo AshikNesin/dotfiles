@@ -6,13 +6,13 @@
 # check_dependency fzf git || exit 1
 
 HELP_TEXT="
-ic - interactive checkout
+interactive-checkout - interactive checkout
 
 Check out branches quickly with the power of \`fzf\`.
 Default view is local branches (HEADS).
 
 Usage:
-    ic [OPTIONS] <QUERY>
+    interactive-checkout [OPTIONS] <QUERY>
 
 
 OPTIONS:
@@ -27,15 +27,15 @@ QUERY:
     This is passed to \`fzf\` as the initial query, and can be changed.
 
 Examples
-    ic             # Show branches from heads (local)
+    interactive-checkout             # Show branches from heads (local)
 
-    ic LPS-12345   # Show branches that match the query 'LPS-12345':
+    interactive-checkout LPS-12345   # Show branches that match the query 'LPS-12345':
 
-    ic -r          # Show branches from remotes
+    interactive-checkout -r          # Show branches from remotes
 
-    ic -a          # Show branches from heads and remotes
+    interactive-checkout -a          # Show branches from heads and remotes
 
-    ic -t          # Show branches from tags
+    interactive-checkout -t          # Show branches from tags
 "
 
 ### Determine whether to search local, remotes, or all
