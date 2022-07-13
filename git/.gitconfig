@@ -10,7 +10,7 @@
 [color]
 	ui = true
 [alias]
-	fuzzy="!ic"
+	fuzzy="!interactive-checkout"
 	pr="!gh pr view --web"
 	set-work-email="!git config user.email $WORK_EMAIL"
 	set-email="!git config user.email 'mail@ashiknesin.com'"
