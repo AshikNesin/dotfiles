@@ -21,7 +21,7 @@
     # show what I did today
     day = "!sh -c 'git log --reverse --no-merges --branches=* --date=local --after=\"yesterday 11:59PM\" --author=\"`git config --get user.name`\"'"
 	# create an empty commit
-    empty = commit --allow-empty
+    dummy = "!git commit --allow-empty -m 'Empty test commit'"
     cleanup = "!git remote prune origin && git gc && git clean -df && git stash clear"
     remotes = remote -v
     cg = "!sh -c 'git ls-files -m | grep $1 | xargs git checkout ' -"
