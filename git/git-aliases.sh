@@ -1,11 +1,11 @@
 unalias gca >/dev/null 2>/dev/null #remove oh-my-zsh git plugin alias
 alias gca="git_commit_all"
+alias fz="interactive-checkout"
 alias gcd="git clone --depth=1"
 ## Git commands
 
 # Based on https://gist.github.com/codejets/519d3287229ed075a025
 alias gaa='git add . && git commit --amend'
-# alias gc="git commit -m"
 alias gc="git checkout"
 alias gcm="git checkout master"
 alias gcb="git checkout -b"
