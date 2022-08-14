@@ -6,6 +6,8 @@
 [push]
     # push will only do the current branch, not all branches
 	default = current
+	# https://git-scm.com/docs/git-config#Documentation/git-config.txt-pushautoSetupRemote
+	autoSetupRemote = true
 
 [color]
 	ui = true
