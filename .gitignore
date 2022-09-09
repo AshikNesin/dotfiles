@@ -190,3 +190,5 @@ scripts/node_modules/*
 local/*
 .stfolder/*
 scripts/node_modules
+*sync-conflict*
+.sync-conflict*
