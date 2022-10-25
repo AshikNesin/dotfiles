@@ -1,1 +1,1 @@
-/bin/bash -c "brew install node@14 iterm2"
+/bin/bash -c "brew install iterm2"

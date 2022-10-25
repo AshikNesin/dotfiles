@@ -2,7 +2,7 @@
   "bundleId" : "com.knollsoft.Rectangle",
   "defaults" : {
     "allowAnyShortcut" : {
-      "bool" : false
+      "bool" : true
     },
     "almostMaximizeHeight" : {
       "float" : 0
@@ -46,6 +46,9 @@
     "disabledApps" : {
 
     },
+    "enhancedUI" : {
+      "int" : 1
+    },
     "footprintAlpha" : {
       "float" : 0.30000001192092896
     },
@@ -70,6 +73,9 @@
     "ignoredSnapAreas" : {
       "int" : 0
     },
+    "landscapeSnapAreas" : {
+
+    },
     "launchOnLogin" : {
       "bool" : true
     },
@@ -78,6 +84,9 @@
     },
     "minimumWindowWidth" : {
       "float" : 0
+    },
+    "missionControlDragging" : {
+      "int" : 0
     },
     "moveCursor" : {
       "int" : 0
@@ -90,6 +99,9 @@
     },
     "obtainWindowOnClick" : {
       "int" : 0
+    },
+    "portraitSnapAreas" : {
+
     },
     "relaunchOpensMenu" : {
       "bool" : false
@@ -145,6 +157,9 @@
     "specifiedWidth" : {
       "float" : 1680
     },
+    "stageSize" : {
+      "float" : 190
+    },
     "subsequentExecutionMode" : {
       "int" : 0
     },
@@ -190,9 +205,29 @@
       "keyCode" : 8,
       "modifierFlags" : 1572864
     },
+    "centerThird" : {
+      "keyCode" : 3,
+      "modifierFlags" : 786432
+    },
+    "firstThird" : {
+      "keyCode" : 2,
+      "modifierFlags" : 786432
+    },
+    "firstTwoThirds" : {
+      "keyCode" : 14,
+      "modifierFlags" : 786432
+    },
     "larger" : {
       "keyCode" : 124,
       "modifierFlags" : 917504
+    },
+    "lastThird" : {
+      "keyCode" : 5,
+      "modifierFlags" : 786432
+    },
+    "lastTwoThirds" : {
+      "keyCode" : 17,
+      "modifierFlags" : 786432
     },
     "leftHalf" : {
       "keyCode" : 123,
@@ -239,5 +274,5 @@
       "modifierFlags" : 1310720
     }
   },
-  "version" : "62"
+  "version" : "66"
 }

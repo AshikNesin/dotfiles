@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>AlternateMouseScroll</key>
+	<true/>
 	<key>Default Bookmark Guid</key>
 	<string>049EA605-03A7-492B-AE4E-8C9C6329DA57</string>
 	<key>DimInactiveSplitPanes</key>

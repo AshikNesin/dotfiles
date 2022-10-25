@@ -18,8 +18,6 @@ ln -s ~/dotfiles/.zshrc ~/.zshrc
 
 ln -sf ~/dotfiles/git/.gitconfig ~/.gitconfig
 ln -sf ~/dotfiles/git/.gitignore_global ~/.gitignore
-# Make sure karabiner is configured by now
-ln -sf ~/dotfiles/config/karabiner ~/.config/karabiner
 
 
 cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts

@@ -14,9 +14,6 @@ defaults write com.apple.Preview ApplePersistenceIgnoreState YES
 # show Library folder
 chflags nohidden ~/Library
 
-# show hidden files
-defaults write com.apple.finder AppleShowAllFiles YES
-
 # show path bar
 defaults write com.apple.finder ShowPathbar -bool true
 
@@ -85,6 +82,11 @@ defaults write com.apple.finder OpenWindowForNewRemovableDisk -bool true
 # Disable the warning before emptying the Trash
 defaults write com.apple.finder WarnOnEmptyTrash -bool false
 
+# Defaults to column view
+defaults write com.apple.finder FXPreferredViewStyle -string "clmv"
+
+# Disabling Recent Tags in the Finder window sidebar
+defaults write com.apple.Finder ShowRecentTags -bool false
 
 # Show the ~/Library folder
 chflags nohidden ~/Library
@@ -125,6 +127,9 @@ defaults write com.apple.dock autohide -bool true
 # Make Dock icons of hidden applications translucent
 defaults write com.apple.dock showhidden -bool true
 
+# Make menu clock analog. We'll use Dato instead
+defaults write com.apple.menuextra.clock IsAnalog -bool true
+
 ###############################################################################
 # Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
 ###############################################################################
@@ -134,10 +139,10 @@ defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool
 defaults -currentHost write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 defaults write NSGlobalDomain com.apple.mouse.tapBehavior -int 1
 
-# enable three finger drag on trackpad
-defaults write http://com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerDrag -int 1
-defaults write http://com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag -int 1
-
+# enable three finger drag on trackpad (restart or login/logout is needed)
+defaults write com.apple.AppleMultitouchTrackpad DragLock -bool false
+defaults write com.apple.AppleMultitouchTrackpad Dragging -bool false
+defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerDrag -bool true
 
 ###############################################################################
 # Mac App Store                                                               #
@@ -234,6 +239,12 @@ defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
 # General UI/UX                                                               #
 ###############################################################################
 
+# enable dark mode: https://simonewebdesign.it/how-to-enable-dark-mode-macos-command-line/
+osascript -e 'tell app "System Events" to tell appearance preferences to set dark mode to not dark mode'
+
+# disable spotlight indexing?
+sudo mdutil -i off /
+
 # Set standby delay to 24 hours (default is 1 hour)
 # sudo pmset -a standbydelay 86400
 
@@ -244,7 +255,6 @@ defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
 # Expand save panel by default
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
 defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
-
 # Save to disk (not to iCloud) by default
 defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
 
@@ -282,7 +292,17 @@ defaults write NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled -bool false
 # Disable auto-correct
 defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
 
+# not sure if it works thought :(
+defaults write "Apple Global Domain" com.apple.sound.uiaudio.enabled -int 0
 
+# Always Show Scrollbars - Always, Automatic, WhenScrolling
+# defaults write -g AppleShowScrollBars -string "Always"
+
+
+###############################################################################
+# Change Compute Name for Sharing                                             #
+###############################################################################
+sudo scutil --set ComputerName "Ashik's MBP"
 
 ###############################################################################
 # Kill affected applications                                                  #

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# Ask for the administrator password upfront.
+
+if command -v op 1>/dev/null 2>&1; then
+    echo "Getting system password from 1Password"
+    op item get $OP_MAC_PWD_ID  --fields label=password | sudo -S -v &> /dev/null
+else
+    sudo -v &> /dev/null
+fi
+
+# Update existing `sudo` time stamp
+# until this script has finished.
+#
+# https://gist.github.com/cowboy/3118588
+
+# Keep-alive: update existing `sudo` time stamp until script has finished
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+echo "Password cached"

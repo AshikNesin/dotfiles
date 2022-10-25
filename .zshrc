@@ -89,7 +89,7 @@ export PATH="/usr/local/opt/node@8/bin:$PATH"
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
 
 
 # export PATH=$PATH:/usr/local/mysql/bin
@@ -126,11 +126,18 @@ fpath+=($HOME/dotfiles/utils/pure)
 autoload -U promptinit; promptinit
 prompt pure
 
+export N_PREFIX=$HOME/.n
+export PATH=$N_PREFIX/bin:$PATH
+
 # Fig post block. Keep at the bottom of this file.
 
 if [ -f "$HOME/.fig/shell/zshrc.post.zsh" ]
 then
 fi
+
+#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
 # Fig post block. Keep at the bottom of this file.
 [[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
