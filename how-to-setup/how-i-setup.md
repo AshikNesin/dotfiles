@@ -151,3 +151,9 @@ sdk install java 11.0.17-amzn
 - Rectangle: Import config from dotfiles
 
 https://apps.apple.com/in/app/xcode/id497799835?mt=12 
+
+
+## How to disable sliding animation when switching desktops on Mac
+https://www.youtube.com/watch?v=WPY5ZgEeR8o
+
+![](./media/reduce-animation-desktop-switch.png)

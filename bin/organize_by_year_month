@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Set the starting directory (that you're currently in)
+start_dir=$(pwd)
+
+# Loop through all files in the starting directory
+for file in "$start_dir"/*
+do
+    # Get the year and month that the file was created
+    year=$(stat -f "%Sm" -t "%Y" "$file")
+    month=$(stat -f "%Sm" -t "%m" "$file")
+    
+    # Check if a directory for the year & month already exists
+    if [ ! -d "$start_dir/$year/$month" ]
+    then
+        # Create a new directory for the month if it doesn't exist
+        mkdir -p "$start_dir/$year/$month"
+    fi
+    
+     # Check if the file is a regular file (not a directory)
+    if [ -f "$file" ]
+    then
+      # Move the file to the directory for the year and month it was created
+      mv "$file" "$start_dir/$year/$month"
+    fi
+done

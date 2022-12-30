@@ -51,7 +51,8 @@ exists()
 
 # npm
     # if command -v 'npm' &> /dev/null; then
-		alias npmi="npm install --no-fund"
+    alias npm="pnpm"
+		alias npmi="npm install"
 		alias npmd="npm run dev"
 		alias npmg="install-app --npm"
 		alias npmid="npm install --save-dev"
