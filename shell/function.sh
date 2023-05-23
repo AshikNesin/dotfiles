@@ -38,3 +38,17 @@ function c() {
                 code "$@"
         fi
 }
+
+# https://www.emgoto.com/md-to-mdx-rename/
+
+function migrateMDtoMDX() {
+  for file in "$1"/*; do
+    if [ -d "$file" ]; then
+      migrateMDtoMDX "$file"
+    else
+      if [[ $file == *.md ]]; then
+        mv "$file" "${file%.*}.mdx"
+      fi
+    fi
+  done
+}

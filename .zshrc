@@ -89,7 +89,7 @@ export PATH="/usr/local/opt/node@8/bin:$PATH"
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_25.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
-# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
 
 
 # export PATH=$PATH:/usr/local/mysql/bin
@@ -141,5 +141,11 @@ export SDKMAN_DIR="$HOME/.sdkman"
 
 export PATH="$PATH:/Users/cb-it-01-1342/.bin"
 
+export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
+export PATH="/opt/homebrew/lib/ruby/gems/2.6.0/bin:$PATH"
+
 # Fig post block. Keep at the bottom of this file.
 [[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
+export PATH="/opt/homebrew/opt/ruby@2.6/bin:$PATH"
+export PATH="/opt/homebrew/opt/mongodb-community@4.4/bin:$PATH"
+export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"

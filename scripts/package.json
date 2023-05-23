@@ -6,7 +6,8 @@
   "bin": {
     "install-app": "./bin/install-app.js",
     "up": "./bin/up.js",
-    "cbr": "./bin/cbr.js"
+    "cbr": "./bin/cbr.js",
+    "auto-switch-node-version": "./bin/auto-switch-node-version.js"
   },
   "preferGlobal": true,
   "scripts": {
@@ -26,6 +27,8 @@
   "dependencies": {
     "csvtojson": "^2.0.10",
     "json-2-csv": "^3.17.1",
+    "read-pkg-up": "^9.1.0",
+    "semver": "^7.5.1",
     "shelljs": "^0.8.5"
   }
 }

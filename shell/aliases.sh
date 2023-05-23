@@ -51,7 +51,7 @@ exists()
 
 # npm
     # if command -v 'npm' &> /dev/null; then
-    alias npm="pnpm"
+    # alias npm="pnpm"
 		alias npmi="npm install"
 		alias npmd="npm run dev"
 		alias npmg="install-app --npm"
@@ -65,7 +65,10 @@ exists()
 	alias ns="npm start"
 	alias y="yarn add"
 
-
+# if [[ $HOME == *"/Users/ashiknesin"* ]]; then
+#   alias npm="pnpm"
+# 	alias npx="npm_execpath=$(which pnpm) npx"
+# fi
 
 # Server Guick Starts
 
@@ -101,7 +104,7 @@ fi
 
 # Utility
 
-	alias yt="youtube-dl"
+	alias yt="yt-dlp"
 # ----------------------------------------------------------------------
 # | System                                                            |
 # ----------------------------------------------------------------------
