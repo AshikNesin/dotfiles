@@ -2,16 +2,19 @@
 import fs from "fs";
 import { exec } from "child_process";
 import semver from "semver";
-import readPkgUp from "read-pkg-up";
+import { readPackageUp } from 'read-pkg-up';
 
 // Build array of available versions from input file
 const versions = fs.readFileSync(process.argv.pop(), { encoding: "utf8" }).split("\n");
 
 // Read closest package.json file
-readPkgUp().then(({ packageJson }) => {
+readPackageUp().then(({ packageJson }) => {
+    console.log({ packageJson });
     try {
         // Determine highest version satisfying its version constraint
         const target = semver.maxSatisfying(versions, packageJson.engines.node);
+
+        console.log({ target });
 
         // Check current node version and switch if necessary
         exec("node -v", (error, stdout) => {
@@ -21,6 +24,7 @@ readPkgUp().then(({ packageJson }) => {
             }
         });
     } catch (e) {
+        console.log(e);
         // fail silently
     }
 });

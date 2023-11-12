@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Ashik's Dotfiles",
   "main": "index.js",
+  "type": "module",
   "bin": {
     "install-app": "./bin/install-app.js",
     "up": "./bin/up.js",
-    "cbr": "./bin/cbr.js",
     "auto-switch-node-version": "./bin/auto-switch-node-version.js"
   },
   "preferGlobal": true,

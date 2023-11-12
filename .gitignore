@@ -192,3 +192,7 @@ local/*
 scripts/node_modules
 *sync-conflict*
 .sync-conflict*
+
+
+## Others
+*.local
