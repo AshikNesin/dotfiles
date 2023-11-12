@@ -87,4 +87,4 @@
 	gpgsign = true
 # https://developer.1password.com/docs/ssh/git-commit-signing
 [includeIf "gitdir:~/work"]
-  path = ~/work/acme/.gitconfig
+  path = ~/dotfiles/git/.gitconfig-work.local
