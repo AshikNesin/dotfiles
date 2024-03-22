@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+if command -v /opt/homebrew/bin/ntfy >/dev/null && command -v /usr/bin/pbcopy >/dev/null; then
+  /opt/homebrew/bin/ntfy publish test "Init Universal copy"  >/dev/null
+  /opt/homebrew/bin/ntfy sub universal-copy 'echo "$m" | /usr/bin/pbcopy' 
+else
+  echo "ntfy and pbcopy are not installed. Please install them before using this script."
+  exit 1
+fi

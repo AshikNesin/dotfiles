@@ -52,3 +52,15 @@ function migrateMDtoMDX() {
     fi
   done
 }
+
+function cleanup() {
+if docker info >/dev/null 2>&1; then
+    # without any confirmation    
+    docker system prune -f
+else
+    echo "Docker is not running."
+fi
+
+brew cleanup
+
+}

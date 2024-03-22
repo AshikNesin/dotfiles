@@ -27,3 +27,12 @@ cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts
 # ln -sf ~/dotfiles/local/.ssh ~/.ssh
 
 sh -c '~/dotfiles/local/.ssh/fix-permission.sh'
+
+ln -fs  ~/dotfiles/local/.docker/daemon.json ~/.docker/daemon.json
+ln -fs  ~/dotfiles/local/.docker/config.json ~/.docker/config.json
+
+# ln -fs  ~/dotfiles/local/ntfy/client.yml /etc/ntfy/client.yml
+
+# https://docs.ntfy.sh/subscribe/cli/
+mkdir -p  ~/Library/Application\ Support/ntfy
+ln -fs  ~/dotfiles/local/ntfy/client.yml ~/Library/Application\ Support/ntfy/client.yml

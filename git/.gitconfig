@@ -1,7 +1,7 @@
 [user]
 	name = Ashik Nesin
 	email = mail@ashiknesin.com
-	signingkey = ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAlyVITspj+Rm3nguvjkbb0GdWq8dSDM0jm8TskgagPIA+yyi6sfENzKQOOQiNoamSsFXL0DxK4Yr9S+hlZdfxSlxRm/GYfUGI6T1mULxtk0AHUgyC9fuej1bhdFEhAiq+4oOUbh3pJ9dzSf36Le0wcDVsyPvQ1Li7sTZZHFJm6lRWhsrskgIPHN9pA5w8a07/PLvt1J4nSKV4CryodUiR2Ce2rNa7tq2WdM8xZrIXh2aFQkOFlEhp+KidOFrPGL6queW3fwdlPh+5y8sjLh1b8754HniUvT1e0tWqNp932LZYxZJNpEuKo6YyzWiyQvDZPyuAlyj1XcPbeqF7Nc7JahqnPw2fmsAJ92GyQsQtJb3NxQC8ffSXuDkfuP3Q6iqQ4/wAIORNW6wkFSye4bb6I5aBPyZ6yshABBEHAOyDdLeShKQTBi9nN2tjrr4cC702uNf+SbEuGBZ7bsWzf/TKbwWiSR+MWGKnjjqycl9F2GBaNVnNcHGwSzFsaGolqLeSa8Z+gEHd5UdRp813gUQI3omq/h28S+gilPogHzhvIaNBqMISZdi6JAFQx7By5Yo5x7jLaa91EEDLoGb7WNmf7m5BhIKn0w1Nos7I6Z+EEJ6RP5kGdqTlXRS4c3WtnON7ye8YJw2kn3U7gXkzJXYikLv7Cf3ibWRaJ2OYJF08Ew==
+	# signingkey = ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDAlyVITspj+Rm3nguvjkbb0GdWq8dSDM0jm8TskgagPIA+yyi6sfENzKQOOQiNoamSsFXL0DxK4Yr9S+hlZdfxSlxRm/GYfUGI6T1mULxtk0AHUgyC9fuej1bhdFEhAiq+4oOUbh3pJ9dzSf36Le0wcDVsyPvQ1Li7sTZZHFJm6lRWhsrskgIPHN9pA5w8a07/PLvt1J4nSKV4CryodUiR2Ce2rNa7tq2WdM8xZrIXh2aFQkOFlEhp+KidOFrPGL6queW3fwdlPh+5y8sjLh1b8754HniUvT1e0tWqNp932LZYxZJNpEuKo6YyzWiyQvDZPyuAlyj1XcPbeqF7Nc7JahqnPw2fmsAJ92GyQsQtJb3NxQC8ffSXuDkfuP3Q6iqQ4/wAIORNW6wkFSye4bb6I5aBPyZ6yshABBEHAOyDdLeShKQTBi9nN2tjrr4cC702uNf+SbEuGBZ7bsWzf/TKbwWiSR+MWGKnjjqycl9F2GBaNVnNcHGwSzFsaGolqLeSa8Z+gEHd5UdRp813gUQI3omq/h28S+gilPogHzhvIaNBqMISZdi6JAFQx7By5Yo5x7jLaa91EEDLoGb7WNmf7m5BhIKn0w1Nos7I6Z+EEJ6RP5kGdqTlXRS4c3WtnON7ye8YJw2kn3U7gXkzJXYikLv7Cf3ibWRaJ2OYJF08Ew==
 [credential]
 	helper = store
 [push]
@@ -79,12 +79,24 @@
 	old = red bold
 	new = green bold
 	whitespace = red reverse
-[gpg]
-	format = ssh
-[gpg "ssh"]
-	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-[commit]
-	gpgsign = true
+# [gpg]
+# 	format = ssh
+# [gpg "ssh"]
+# 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+# [commit]
+# 	gpgsign = true
 # https://developer.1password.com/docs/ssh/git-commit-signing
 [includeIf "gitdir:~/work"]
   path = ~/dotfiles/git/.gitconfig-work.local
+  
+[diff]
+        tool = difftastic
+
+[difftool]
+        prompt = false
+
+[difftool "difftastic"]
+        cmd = difft "$LOCAL" "$REMOTE"
+
+[pager]
+        difftool = true

@@ -60,6 +60,7 @@ exists()
 		alias npmr="npm uninstall"
 		alias npmrg="npm uninstall -g"
 		alias nom="rm -rf node_modules && npm cache clear && npm i"
+		alias npminit='npm init -y; npm pkg set type="module";'
 	# fi
 	alias nn="npm-name"
 	alias ns="npm start"

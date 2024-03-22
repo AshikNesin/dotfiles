@@ -105,9 +105,9 @@ export PATH="/usr/local/opt/ncurses/bin:$PATH"
 export PATH="/usr/local/opt/node@14/bin:$PATH"
 export ANDROID_SDK_ROOT=$HOME/Library/Android/sdk
 
-export GOPATH=$HOME/go
-export GOROOT="$(brew --prefix golang)/libexec"
-export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
+# export GOPATH=$HOME/go
+# export GOROOT="$(brew --prefix golang)/libexec"
+# export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"export PATH="/opt/homebrew/opt/node@14/bin:$PATH"
 
 # Python 3
 export PYENV_ROOT="$HOME/.pyenv"
@@ -160,4 +160,3 @@ export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 PATH=~/.console-ninja/.bin:$PATH
-eval "$(atuin init zsh)"
