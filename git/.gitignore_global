@@ -180,3 +180,6 @@ out
 
 .env
 pnpm-lock.yaml
+
+.stversions
+.stfolder
