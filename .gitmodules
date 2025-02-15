@@ -7,3 +7,6 @@
 [submodule "local/chrome-extentions/bypass-paywalls-chrome"]
 	path = local/chrome-extentions/bypass-paywalls-chrome
 	url = https://github.com/iamadamdev/bypass-paywalls-chrome.git
+[submodule "utils/whisper-cpp"]
+	path = utils/whisper-cpp
+	url = https://github.com/ggerganov/whisper.cpp
