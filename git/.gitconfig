@@ -40,6 +40,7 @@
 	url=!sh -c 'git remote set-url origin git@github.com:AshikNesin/$0.git'
 	set-url=!sh -c 'git remote set-url origin $0'
 	cb-url=!sh -c 'git remote set-url origin git@cbgit:chargebee/$0.git'
+	show-url=!sh -c 'git remote -v'
 [url "git@github.com:AshikNesin/"]
   insteadOf = "git://github.com/AshikNesin/"
 [url "git@github.com:HugeThoughts/"]

@@ -1,6 +1,4 @@
 # Fig pre block. Keep at the top of this file.
-[[ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.pre.zsh"
-# Fig pre block. Keep at the top of this file.
 
 if [ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]
 then
@@ -144,8 +142,6 @@ export PATH="$PATH:/Users/cb-it-01-1342/.bin"
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
 export PATH="/opt/homebrew/lib/ruby/gems/2.6.0/bin:$PATH"
 
-# Fig post block. Keep at the bottom of this file.
-[[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
 export PATH="/opt/homebrew/opt/ruby@2.6/bin:$PATH"
 export PATH="/opt/homebrew/opt/mongodb-community@4.4/bin:$PATH"
 export PATH="/opt/homebrew/opt/postgresql@15/bin:$PATH"
@@ -161,3 +157,15 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 
 PATH=~/.console-ninja/.bin:$PATH
 eval "$(atuin init zsh)"
+
+# pnpm
+export PNPM_HOME="$HOME/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
+[ -s "$HOME/.bun/_bun" ] && source "/$HOME/.bun/_bun"
+
+[ -s "$HOME/.deno/env" ] && . "/$HOME/.deno/env"

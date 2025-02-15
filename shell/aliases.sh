@@ -28,7 +28,7 @@ exists()
 	alias rmd="rm -rf"
 	alias e="$EDITOR"
 	alias v="$VISUAL"
-	alias ls="exa -a"
+#	alias ls="exa -a"
 
 
 
@@ -146,3 +146,7 @@ if command -v 'htop' &> /dev/null; then
 		alias top="htop"
 	fi
 alias node12='export PATH="$PATH:/usr/local/opt/node@12/bin"; node -v'
+
+if command -v 'lla' &> /dev/null; then
+		alias ls="lla"
+fi

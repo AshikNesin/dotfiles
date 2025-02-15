@@ -11,7 +11,7 @@ alias gcm="git checkout master"
 alias gcb="git checkout -b"
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 alias ga="git amend"
-alias diff='git diff'
+alias diff='git difftool'
 alias br='git br'
 alias st='git status'
 alias fetch='git fetch'

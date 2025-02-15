@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# for file in *.mp4; do ffmpeg -i $file -c:v libx264 -crf 28 ./compressed/$file; done
+
+#  The Constant Rate Factor (CRF) controls the quality and compression level. Lower values give higher quality and larger file sizes, while higher values give lower quality and smaller file sizes. The default CRF for libx264 is 23, and it ranges from 0 (lossless) to 51 (worst quality).
+
+mkdir -p compressed
+for file in *.mp4; do
+    ffmpeg -i "$file" -c:v libx264 -crf 35 "./compressed/$file"
+done
