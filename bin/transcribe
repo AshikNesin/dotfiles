@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+# Create necessary directories if they don't exist
+WHISPER_CPP_PATH="$HOME/dotfiles/utils/whisper-cpp"
+RECORDING_PATH="$HOME/recordings"
+mkdir -p "${RECORDING_PATH}"
+
+# Ensure whisper-cpp directory exists
+if [ ! -d "${WHISPER_CPP_PATH}" ]; then
+    echo "Error: whisper-cpp directory not found at ${WHISPER_CPP_PATH}"
+    exit 1
+fi
+
+# Check if model exists, if not download it
+MODEL="${WHISPER_CPP_PATH}/models/ggml-base.en.bin"
+if [ ! -f "${MODEL}" ]; then
+    echo "Model file not found. Creating models directory and downloading..."
+    mkdir -p "${WHISPER_CPP_PATH}/models"
+    # curl -L "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin" -o "${MODEL}"
+    exit 1
+fi
+
+RECORDING_FILE="${RECORDING_PATH}/recording-$(date +%s).wav"
+TRANSCRIPTION_FILE="${RECORDING_FILE}.txt"
+
+echo "Recording... Press Ctrl+C to stop."
+sox -d -r 16000 -c 1 -b 16 "${RECORDING_FILE}"
+
+# Change to whisper directory and run transcription
+cd "${WHISPER_CPP_PATH}"
+./build/bin/whisper-cli -m "${MODEL}" -f "${RECORDING_FILE}" -otxt "${TRANSCRIPTION_FILE}" --language auto
+
+if [ -f "${TRANSCRIPTION_FILE}" ]; then
+    echo "Transcription:"
+    echo "--------------"
+    cat "${TRANSCRIPTION_FILE}"
+    echo "--------------"
+
+    # copy the file content to clipboard
+    pbcopy < "${TRANSCRIPTION_FILE}"
+    echo "Copied to clipboard"
+else
+    echo "Error: Transcription failed. File not created."
+fi
