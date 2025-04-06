@@ -28,6 +28,9 @@ cp -r ~/dotfiles/local/fonts/.  ~/Library/Fonts
 
 sh -c '~/dotfiles/local/.ssh/fix-permission.sh'
 
+
+mkdir -p ~/.ssh
+mkdir -p ~/.docker
 ln -fs  ~/dotfiles/local/.docker/daemon.json ~/.docker/daemon.json
 ln -fs  ~/dotfiles/local/.docker/config.json ~/.docker/config.json
 

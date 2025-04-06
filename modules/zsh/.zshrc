@@ -137,7 +137,7 @@ fi
 # export SDKMAN_DIR="$HOME/.sdkman"
 # [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
-export PATH="$PATH:/Users/cb-it-01-1342/.bin"
+export PATH="$PATH:/Users/ashiknesin/.bin"
 
 export PATH="/opt/homebrew/opt/ruby/bin:$PATH"
 export PATH="/opt/homebrew/lib/ruby/gems/2.6.0/bin:$PATH"
@@ -149,14 +149,14 @@ export VOLTA_HOME="$HOME/.volta"
 export PATH="$VOLTA_HOME/bin:$PATH"
 # source "$HOME/.sdkman/bin/sdkman-init.sh"
 # bun completions
-[ -s "/Users/cb-it-01-1342/.bun/_bun" ] && source "/Users/cb-it-01-1342/.bun/_bun"
+[ -s "/Users/ashiknesin/.bun/_bun" ] && source "/Users/ashiknesin/.bun/_bun"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
 PATH=~/.console-ninja/.bin:$PATH
-eval "$(atuin init zsh)"
+# eval "$(atuin init zsh)"
 
 # pnpm
 export PNPM_HOME="$HOME/Library/pnpm"
@@ -169,3 +169,7 @@ esac
 [ -s "$HOME/.bun/_bun" ] && source "/$HOME/.bun/_bun"
 
 [ -s "$HOME/.deno/env" ] && . "/$HOME/.deno/env"
+
+export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
+
+export ANT_OPTS="-Xmx6144m"

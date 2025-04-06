@@ -1,0 +1,316 @@
+{
+  // =====================  Editor 📝 ================================
+  "editor.fontFamily": "Operator Mono, 'Fira Code'",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 17, // default 17
+  "editor.lineHeight": 24, // 24 Good Typography → 1.45 times of fontSize
+  "editor.fontWeight": "400",
+  "editor.letterSpacing": 0.5,
+  "workbench.fontAliasing": "auto",
+  "editor.renderWhitespace": "all",
+  "editor.tabCompletion": "on",
+  "editor.snippetSuggestions": "top",
+  "editor.multiCursorModifier": "ctrlCmd",
+  "editor.formatOnPaste": false,
+  "editor.autoIndent": "full",
+  "editor.detectIndentation": true,
+  "editor.wrappingIndent": "same",
+  "editor.lineNumbers": "on",
+  "editor.tabSize": 4,
+  "editor.wordWrap": "on", // make vs code line break without scrolling horizontally
+  "editor.formatOnType": false,
+  "editor.suggestSelection": "first",
+  "editor.quickSuggestionsDelay": 0,
+  "editor.formatOnSave": false,
+  // ignores the syntax highlighting when we copy this and paste it in things like email
+  "editor.copyWithSyntaxHighlighting": false,
+  // https://github.com/wesbos/eslint-config-wesbos
+  // turn it off for JS and JSX, we will do this via eslint
+  "[javascript]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[vue]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "Vue.volar"
+  },
+  "[ts]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false
+  },
+  "[ejs]": {
+    "editor.formatOnSave": false
+  },
+  "[jsp]": {
+    "editor.formatOnSave": false
+  },
+  // tell the ESLint plugin to run on save
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  // =====================  Window 📁 ================================
+  "window.title": "${dirty} ${activeEditorMedium}${separator}${rootName}",
+  "window.titleBarStyle": "native",
+  "window.restoreFullscreen": true,
+  // open new window in exact dimension as before
+  "window.newWindowDimensions": "inherit",
+  "workbench.settings.editor": "json",
+  // Disables Mac like default full screen
+  "window.nativeFullScreen": false,
+  // =====================  File 📁 ================================
+  "files.autoSave": "off",
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    // "**/dist": true,
+    "**/.classpath": true,
+    "**/.project": true,
+    "**/.settings": true,
+    "**/.factorypath": true,
+    "**/qa": true,
+    "**/qa_data": true,
+    "**/.next": true,
+    ".yarn": true,
+  },
+  "files.encoding": "utf8",
+  "files.trimTrailingWhitespace": false,
+  "files.associations": {
+    ".env": "shell",
+    ".jspt": "jsp",
+    // "*.md": "mdx"
+  },
+  // =====================  Terminal ================================
+  "terminal.explorerKind": "integrated",
+  "terminal.external.osxExec": "iTerm.app",
+  "terminal.integrated.shell.osx": "/bin/zsh",
+  "terminal.integrated.fontFamily": "Operator Mono",
+  // =====================  Git =====================================
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+  // =====================  Sync ================================
+  "sync.gist": "c1b97423ef7ec45a9e9b5e8bfc5839b8",
+  "sync.autoUpload": true,
+  "sync.syncExtensions": true,
+  "sync.autoDownload": true,
+  "sync.quietSync": true,
+  // =====================  Others ================================
+  "breadcrumbs.enabled": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  // https://stackoverflow.com/questions/38713405/open-files-always-in-a-new-tab
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  // https://calebporzio.com/my-vs-code-setup-2
+  "search.useIgnoreFiles": true,
+  "search.exclude": {
+    ".next": true,
+    ".cache": true,
+    // "build": true,
+    "public/build": true,
+    "**/node_modules": true,
+    // "**/package-lock.json": true,
+    "**/dist": true,
+    "**/.jest-cache": true,
+    ".jest-cache": true,
+    "**/.venv": true,
+    // "**/package-lock.json": true
+    "pnpm-lock.yaml": true,
+  },
+  "zenMode.fullScreen": false,
+  "editor.suggestFontSize": 16,
+  "editor.suggestLineHeight": 28,
+  // VS Code Pro
+  // "explorer.openEditors.visible": 0,
+  "git.autorefresh": true,
+  // "workbench.editor.tabCloseButton": "off",
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
+  },
+  "files.defaultLanguage": "markdown",
+  "multiCommand.commands": [
+    {
+      "command": "multiCommand.focusMode",
+      "sequence": [
+        "workbench.action.toggleZenMode"
+        // "editor.lineNumbers": "off",
+      ]
+    }
+  ],
+  "extensions.ignoreRecommendations": true,
+  "editor.renderControlCharacters": false,
+  // "workbench.editor.showTabs": false
+  // "workbench.sideBar.location": "right",
+  /**
+   * Silence The Noise
+   */
+  // "breadcrumbs.enabled": false,
+  "scm.diffDecorations": "none",
+  // "editor.hover.enabled": false,
+  "editor.matchBrackets": "never",
+  "workbench.tips.enabled": false,
+  // "editor.colorDecorators": false,
+  // "git.decorations.enabled": false,
+  "editor.lightbulb.enabled": "off",
+  "editor.selectionHighlight": false,
+  "editor.overviewRulerBorder": false,
+  "editor.renderLineHighlight": "none",
+  "editor.occurrencesHighlight": "off",
+  // "problems.decorations.enabled": false,
+  "editor.hideCursorInOverviewRuler": true,
+  "editor.gotoLocation.multipleReferences": "goto",
+  "editor.gotoLocation.multipleDefinitions": "goto",
+  "editor.gotoLocation.multipleDeclarations": "goto",
+  "editor.gotoLocation.multipleImplementations": "goto",
+  "editor.gotoLocation.multipleTypeDefinitions": "goto",
+  // "editor.fontSize": 15,
+  // "editor.lineHeight": 45,
+  "terminal.integrated.fontSize": 14,
+  // "terminal.integrated.lineHeight": 1.5,
+  /**
+   * Better Defaults
+   **/
+  "diffEditor.ignoreTrimWhitespace": false,
+  // "files.trimTrailingWhitespace": true,
+  "diffEditor.renderSideBySide": false,
+  // Adds new line at the end
+  "files.trimFinalNewlines": true,
+  // Trims extra new line at the end
+  "files.insertFinalNewline": true,
+  // "workbench.sideBar.location": "right",
+  // "workbench.statusBar.visible": false,
+  // "workbench.editor.showTabs": false,
+  // "editor.lineNumbers": "off",
+  /**
+   * Window Settings
+   **/
+  "window.nativeTabs": true,
+  "customizeUI.titleBar": "inline",
+  "customizeUI.stylesheet": {
+    ".editor .title": "background: transparent !important;",
+    ".editor .title .label-container": "visibility: hidden;",
+    // Hide top-right buttons
+    ".editor .title .actions-container .action-item a": "visibility:hidden;", // close btn
+    ".editor .title .dirty .actions-container .action-item a": "visibility:initial;", // dirty
+    // Show top-right "settings goto icon"
+    ".editor .title .actions-container .action-item a[title=\"Open Settings (UI)\"]": "visibility: initial;",
+    ".editor .title .actions-container .action-item a[title=\"Open Settings (JSON)\"]": "visibility: initial;",
+    // Make it the "right-most" icon.
+    ".editor .title .actions-container": "flex-direction: row-reverse;",
+    // Only show the scrollbar on hover.
+    ".editor .scrollbar .slider": "visibility: hidden",
+    ".editor .scrollbar:hover .slider": "visibility: initial",
+    // Change cursor color.
+    ".monaco-editor .cursor": "background: linear-gradient(to bottom, #7f00ff, #e100ff) !important; color: #292D3E !important"
+  },
+  // Include "-" in word selection.
+  "editor.wordSeparators": "`~!@#%^&*()=+[{]}\\|;:'\",.<>/?",
+  "emmet.includeLanguages": {
+    "vue": "html"
+  },
+  /**
+   * Prettier
+   **/
+  // "[javascript]": {
+  //     "editor.defaultFormatter": "esbenp.prettier-vscode",
+  //     "editor.formatOnSave": true
+  // },
+  // "prettier.requireConfig": true,
+  "prettier.useEditorConfig": false,
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "workbench.startupEditor": "newUntitledFile",
+  "workbench.editor.tabCloseButton": "off",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.accessibilitySupport": "off",
+  "editor.inlineSuggest.enabled": true,
+  "security.workspace.trust.untrustedFiles": "open",
+  "editor.guides.indentation": false,
+  "workbench.colorTheme": "Tomorrow Night Blue",
+  "terminal.integrated.env.osx": {
+    "FIG_NEW_SESSION": "1"
+  },
+  "workbench.iconTheme": "material-icon-theme",
+  "editor.linkedEditing": true,
+  "git.confirmSync": false,
+  "vim.startInInsertMode": true,
+  "vim.leader": "<space>",
+  // "editor.stickyScroll.enabled":true
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
+    "mdx": false,
+    "md": false
+  },
+  "vue.codeActions.enabled": false,
+  // "editor.inlayHints.enabled": "off",
+  // "workbench.colorCustomizations": {
+  //   "editor.lineHighlightBackground": "#1073cf2d",
+  //   "editor.lineHighlightBorder": "#9fced11f"
+  // },
+  // "diffEditor.wordWrap": "off",
+  // "editor.guides.bracketPairs": false
+  "editor.minimap.enabled": false,
+  "editor.wordWrapColumn": 80,
+  "console-ninja.featureSet": "Community",
+  "custom-language-properties": {
+    "scss.comments.lineComment": ""
+  },
+  "Notes.notesLocation": "/Users/ashiknesin/Sync/Notes/vs-code",
+  "workbench.editor.tabActionCloseVisibility": false,
+  "codeium.enableCodeLens": false,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[mdx]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "prisma.showPrismaDataPlatformNotification": false,
+  "github.copilot.editor.enableAutoCompletions": true,
+  // "github.copilot.chat.customUserInstructions": [
+  //   "Use modern javascript like ESM, optional chaining",
+  // ],
+  "continue.enableTabAutocomplete": false,
+  "git.ignoreRebaseWarning": true,
+  "codeviz.analyticsEnabled": true,
+  "git.openRepositoryInParentFolders": "always",
+  "github.copilot-labs.advanced": {},
+  "github.copilot.chat.commitMessageGeneration.instructions": [],
+  "github.copilot.chat.search.semanticTextResults": true,
+  "roo-cline.allowedCommands": [
+    "npm test",
+    "npm install",
+    "tsc",
+    "git log",
+    "git diff",
+    "git show"
+  ],
+  "redhat.telemetry.enabled": false
+  // "[typescriptreact]": {
+  //   "editor.defaultFormatter": "vscode.typescript-language-features"
+  // }
+}
