@@ -23,6 +23,9 @@ links:
   - source: modules/git/.gitignore_global
     target: ~/.gitignore
   
+  - source: modules/zed/settings.json
+    target: ~/.config/zed/settings.json
+  
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config

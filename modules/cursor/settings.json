@@ -75,7 +75,8 @@
     "files.trimTrailingWhitespace": false,
     "files.associations": {
         ".env": "shell",
-        ".jspt": "jsp"
+        ".jspt": "jsp",
+        ".env*": "dotenv"
     },
     "terminal.explorerKind": "integrated",
     "terminal.external.osxExec": "iTerm.app",
@@ -241,5 +242,35 @@
         "scminput",
         "mdx",
         "md"
-    ]
+    ],
+    "editor.tokenColorCustomizations": {
+        "[*Light*]": {
+            "textMateRules": [
+                {
+                    "scope": "ref.matchtext",
+                    "settings": {
+                        "foreground": "#000"
+                    }
+                }
+            ]
+        },
+        "[*Dark*]": {
+            "textMateRules": [
+                {
+                    "scope": "ref.matchtext",
+                    "settings": {
+                        "foreground": "#fff"
+                    }
+                }
+            ]
+        },
+        "textMateRules": [
+            {
+                "scope": "keyword.other.dotenv",
+                "settings": {
+                    "foreground": "#FF000000"
+                }
+            }
+        ]
+    }
 }
