@@ -1,8 +1,8 @@
 [
     /**
-  * Panels
-  **/
-    {
+    * Panels
+    **/
+  {
         "key": "cmd+k cmd+g",
         "command": "workbench.view.scm"
     },
@@ -12,7 +12,7 @@
     },
     {
         "key": "cmd+k cmd+x",
-        "command": "workbench.view.extensions"
+        "command": "workbench.extensions.action.showInstalledExtensions"
     },
     {
         "key": "cmd+e",
@@ -22,9 +22,10 @@
         "key": "cmd+t",
         "command": "workbench.action.terminal.toggleTerminal"
     },
+  
     /**
-  * Toggle Font Size
-  **/
+    * Toggle Font Size
+    **/
     {
         "key": "cmd+k cmd+k",
         "command": "toggle",
@@ -33,8 +34,8 @@
             "id": "fontSize",
             "value": [
                 {
-                    "editor.fontSize": 17,
-                    "editor.lineHeight": 24
+                    "editor.fontSize": 15,
+                    "editor.lineHeight": 45
                 },
                 {
                     "editor.fontSize": 12,
@@ -43,9 +44,10 @@
             ]
         }
     },
+  
     /**
-  * Fold/Unfold
-  **/
+    * Fold/Unfold
+    **/
     {
         "key": "shift+cmd+[",
         "command": "editor.fold",
@@ -56,9 +58,11 @@
         "command": "editor.unfold",
         "when": "editorFocus"
     },
+  
+  
     /**
-  * Line Manipulation
-  **/
+    * Line Manipulation
+    **/
     {
         "key": "cmd+l",
         "command": "editor.action.copyLinesDownAction",
@@ -69,9 +73,10 @@
         "command": "editor.action.joinLines",
         "when": "editorTextFocus"
     },
+  
     /**
-  * File Explorer
-  **/
+    * File Explorer
+    **/
     {
         "key": "cmd+d",
         "command": "duplicate.execute",
@@ -87,9 +92,10 @@
         "command": "explorer.newFolder",
         "when": "explorerViewletVisible && filesExplorerFocus && !inputFocus"
     },
+  
     /**
-  * Multi-Cursor
-  **/
+    * Multi-Cursor
+    **/
     {
         "key": "cmd+backspace",
         "command": "editor.action.moveSelectionToPreviousFindMatch",
@@ -105,9 +111,10 @@
         "command": "editor.action.insertCursorAtEndOfEachLineSelected",
         "when": "editorFocus && editorHasSelection"
     },
+  
     /**
-  * Split Panels
-  **/
+    * Split Panels
+    **/
     {
         "key": "ctrl+w",
         "command": "workbench.action.joinAllGroups",
@@ -138,9 +145,11 @@
         "command": "workbench.action.decreaseViewSize",
         "when": "editorFocus"
     },
+  
+  
     /**
-  * Terminal Split Panel
-  **/
+    * Terminal Split Panel
+    **/
     {
         "key": "ctrl+n",
         "command": "workbench.action.terminal.split",
@@ -161,9 +170,12 @@
         "command": "workbench.action.terminal.kill",
         "when": "terminalFocus"
     },
+  
+  
+  
     /**
-  * Emmet
-  **/
+    * Emmet
+    **/
     {
         "key": "cmd+m cmd+i",
         "command": "editor.emmet.action.balanceIn",
@@ -199,9 +211,10 @@
         "command": "editor.emmet.action.removeTag",
         "when": "editorTextFocus"
     },
+  
     /**
-  * amVim Finder Fix
-  **/
+    * amVim Finder Fix
+    **/
     {
         "key": "enter",
         "command": "editor.action.nextMatchFindAction",
@@ -212,9 +225,10 @@
         "command": "editor.action.previousMatchFindAction",
         "when": "findWidgetVisible"
     },
+  
     /**
-  * IntelliSense
-  **/
+    * IntelliSense
+    **/
     {
         "key": "cmd+r",
         "command": "workbench.action.gotoSymbol"
@@ -228,7 +242,7 @@
         "command": "editor.action.goToDeclaration",
         "when": "editorTextFocus"
     },
-    {
+  {
         "key": "cmd+k cmd+i",
         "command": "namespaceResolver.import"
     },
@@ -237,8 +251,8 @@
         "command": "namespaceResolver.import"
     },
     /**
-  * Project Switching
-  **/
+    * Project Switching
+    **/
     {
         "key": "cmd+;",
         "command": "workbench.action.switchWindow",
@@ -252,106 +266,87 @@
     //     "key": "alt+cmd+left",
     //     "command": "workbench.action.showPreviousWindowTab"
     // },
+  
     /**
-  * Open DevTools
-  **/
+    * Open DevTools
+    **/
     {
         "key": "alt+cmd+i",
         "command": "workbench.action.toggleDevTools"
     },
+  
     /**
-  * Hide Toaster Notifications
-  **/
+    * Hide Toaster Notifications
+    **/
     {
         "key": "escape",
         "command": "notifications.hideToasts",
         "when": "notificationToastsVisible"
     },
     {
-        "key": "ctrl+s",
-        "command": "workbench.action.toggleSidebarVisibility",
-        "when": "config.better-keybindings.panels"
+      "key": "ctrl+s",
+      "command": "workbench.action.toggleSidebarVisibility",
+      "when": "config.better-keybindings.panels"
     },
     {
-        "key": "cmd+k cmd+b",
-        "command": "-workbench.action.toggleSidebarVisibility",
-        "when": "config.better-keybindings.panels"
-    },
-    {
-        "key": "ctrl+e",
-        "command": "-cursorLineEnd",
-        "when": "textInputFocus"
-    },
-    {
-        "key": "ctrl+e",
-        "command": "workbench.view.explorer",
-        "when": "config.better-keybindings.panels && viewContainer.workbench.view.explorer.enabled"
-    },
-    {
-        "key": "cmd+k cmd+e",
-        "command": "-workbench.view.explorer",
-        "when": "config.better-keybindings.panels && viewContainer.workbench.view.explorer.enabled"
-    },
-    {
-        "key": "shift+cmd+e",
-        "command": "workbench.view.explorer",
-        "when": "viewContainer.workbench.view.explorer.enabled"
-    },
-    {
-        "key": "shift+cmd+e",
-        "command": "-workbench.view.explorer",
-        "when": "viewContainer.workbench.view.explorer.enabled"
-    },
-    {
-        "key": "cmd+e",
-        "command": "-actions.findWithSelection"
-    },
-    {
-        "key": "cmd+k cmd+p",
-        "command": "workbench.panel.chat.view.copilot.focus"
-    },
-    {
-      "key": "cmd+=",
-      "command": "continue.focusContinueInput"
-    },
-    {
-      "key": "cmd+l",
-      "command": "-continue.focusContinueInput"
-    },
-    {
-      "key": "alt+a",
-      "command": "-editor.action.accessibilityHelpConfigureAssignedKeybindings",
-      "when": "accessibilityHelpIsShown && accessibleViewHasAssignedKeybindings"
-    },
-    {
-      "key": "cmd+u",
-      "command": "-thunder-client.import-curl",
-      "when": "activeWebviewPanelId == 'tc.env-view' || activeWebviewPanelId == 'tc.request-view'"
-    },
-    {
-      "key": "cmd+u",
-      "command": "-cursorUndo",
+      "key": "cmd+k cmd+b",
+      "command": "-workbench.action.toggleSidebarVisibility",
+      "when": "config.better-keybindings.panels"
+  },
+  {
+      "key": "ctrl+e",
+      "command": "-cursorLineEnd",
       "when": "textInputFocus"
-    },
-    {
+  },
+  {
+      "key": "ctrl+e",
+      "command": "workbench.view.explorer",
+      "when": "config.better-keybindings.panels && viewContainer.workbench.view.explorer.enabled"
+  },
+  {
+      "key": "cmd+k cmd+e",
+      "command": "-workbench.view.explorer",
+      "when": "config.better-keybindings.panels && viewContainer.workbench.view.explorer.enabled"
+  },
+  {
+      "key": "shift+cmd+e",
+      "command": "workbench.view.explorer",
+      "when": "viewContainer.workbench.view.explorer.enabled"
+  },
+  {
+      "key": "shift+cmd+e",
+      "command": "-workbench.view.explorer",
+      "when": "viewContainer.workbench.view.explorer.enabled"
+  },
+  {
       "key": "cmd+=",
       "command": "-workbench.action.zoomIn"
-    },
-    {
+  },
+  {
       "key": "shift+cmd+=",
       "command": "-workbench.action.zoomIn"
-    },
-    {
-      "key": "cmd+-",
-      "command": "-workbench.action.zoomOut"
-    },
-    {
-      "key": "cmd+k cmd+m",
-      "command": "-continue.toggleFullScreen",
-      "when": "!terminalFocus"
-    },
-    {
-      "key": "cmd+h",
-      "command": "continue.toggleFullScreen"
-    }
-]
+  },
+  {
+      "key": "cmd+=",
+      "command": "composer.createNew"
+  },
+  {
+      "key": "cmd+n",
+      "command": "-composer.createNew",
+      "when": "focusedView == 'workbench.panel.composerViewPane2.view'"
+  },
+  {
+      "key": "shift+cmd+=",
+      "command": "composer.createNewChat"
+  },
+  {
+      "key": "cmd+n",
+      "command": "-composer.createNewChat",
+      "when": "focusedView == 'workbench.panel.aichat.view'"
+  },
+  {
+      "key": "cmd+i",
+      "command": "composerMode.agent"
+  }
+  ]
+  
