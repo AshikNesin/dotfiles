@@ -8,3 +8,4 @@ sk-7Q2K2Y1MzxRkwqT3SfJ3TbkFJzKQeHv3bZp8XsQabCD
 
 This should trigger the Gitleaks detection now that markdown files are no longer in the allowlist.
 some change
+some change
