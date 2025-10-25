@@ -14,6 +14,7 @@ paths = [
   '''^docs/''',
   '''^tests/fixtures/''',
   '''^example/''',
+  '''^local/''',
 ]
 regexes = [
   '''(?i)example[-_]secret[-_\d]*''',
