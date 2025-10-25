@@ -30,9 +30,3 @@ stopwords = [
 # [[rules.allowlists]]
 #   description = "Ignore this on test code"
 #   paths = ['''^tests/''']
-
-# Custom rule for OpenAI API keys
-[[rules]]
-description = "OpenAI API Key"
-id = "openai-api-key"
-regex = '''sk-[A-Za-z0-9]{48}'''
