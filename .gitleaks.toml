@@ -1,0 +1,32 @@
+title = "Inherit default Gitleaks config – no custom regex rules"
+# Extend the default built-in rules (so you don't need to write regex yourself)
+[extend]
+  useDefault = true
+
+# If you want, disable some rules you don’t care about (optional)
+# disabledRules = ["generic-api-key", "aws-access-key"]
+
+
+# Global allowlist – e.g., ignore certain paths, files you know are safe (optional)
+[allowlist]
+description = "Ignore non-prod test files, docs or generated artefacts"
+paths = [
+  '''^docs/''',
+  '''^tests/fixtures/''',
+  '''\.md$''',
+  '''^example/''',
+]
+regexes = [
+  '''(?i)example[-_]secret[-_\d]*''',
+]
+stopwords = [
+  "EXAMPLE",
+  "DEMO",
+]
+
+# You can also define rule-specific allowlists if needed
+# [[rules]]
+# id = "some-specific-rule"
+# [[rules.allowlists]]
+#   description = "Ignore this on test code"
+#   paths = ['''^tests/''']
