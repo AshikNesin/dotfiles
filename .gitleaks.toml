@@ -13,7 +13,6 @@ description = "Ignore non-prod test files, docs or generated artefacts"
 paths = [
   '''^docs/''',
   '''^tests/fixtures/''',
-  '''\.md$''',
   '''^example/''',
 ]
 regexes = [
