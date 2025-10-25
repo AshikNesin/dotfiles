@@ -25,3 +25,6 @@ https://intoli.com/blog/ssh-identity-git/
 https://linuxhint.com/fix-bad-owners-or-permission-on-ssh-config/
 
 sudo chmod 600 ~/.ssh/config
+
+
+sk-1234567890abcdef1234567890abcdef12345678
