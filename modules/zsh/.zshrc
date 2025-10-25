@@ -4,7 +4,7 @@ if [ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]
 then
 fi
 
-export HOMEBREW_CASK_OPTS="--appdir=/Applications"
+#export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 export PGHOST=localhost
 
 # Path to your oh-my-zsh installation.
@@ -84,7 +84,9 @@ export PATH="/usr/local/opt/node@8/bin:$PATH"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # export JAVA_HOME=$(/usr/libexec/java_home)
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-17.jdk/Contents/Home
+
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_202.jdk/Contents/Home
@@ -134,8 +136,8 @@ then
 fi
 
 # #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-# export SDKMAN_DIR="$HOME/.sdkman"
-# [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+export SDKMAN_DIR="$HOME/.sdkman"
+[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
 export PATH="$PATH:/Users/ashiknesin/.bin"
 
@@ -155,7 +157,7 @@ export PATH="$VOLTA_HOME/bin:$PATH"
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 
-PATH=~/.console-ninja/.bin:$PATH
+
 # eval "$(atuin init zsh)"
 
 # pnpm
@@ -173,3 +175,19 @@ esac
 export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
 
 export ANT_OPTS="-Xmx6144m"
+
+[ -s "$HOME/.local/bin/env" ] && . "$HOME/.local/bin/env"
+
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+# export JAVA_HOME=${SDKMAN_CANDIDATES_DIR}/java/${CURRENT}
+
+[ -s "$HOME/.cargo/env" ] && source "/$HOME/.cargo/env"
+export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
+
+
+[ -d ~/Apps ] && export HOMEBREW_CASK_OPTS="--appdir=~/Apps"
+export PATH="$HOME/.local/bin:$PATH"
+
+PATH=~/.console-ninja/.bin:$PATH

@@ -176,7 +176,7 @@
     "workbench.startupEditor": "newUntitledFile",
     "workbench.editor.tabCloseButton": "off",
     "[typescript]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "vscode.typescript-language-features"
     },
     "editor.accessibilitySupport": "off",
     "editor.inlineSuggest.enabled": true,
@@ -192,7 +192,7 @@
     "vim.startInInsertMode": true,
     "vim.leader": "<space>",
     "github.copilot.enable": {
-        "*": true,
+        "*": false,
         "plaintext": false,
         "markdown": false,
         "scminput": false,
@@ -264,13 +264,32 @@
                 }
             ]
         },
-        "textMateRules": [
-            {
-                "scope": "keyword.other.dotenv",
-                "settings": {
-                    "foreground": "#FF000000"
-                }
-            }
-        ]
-    }
+        "textMateRules": []
+    },
+    "dotenv.enableAutocloaking": false,
+    "cursor.composer.shouldAllowCustomModes": true,
+    "github.copilot.selectedCompletionModel": "gpt-4o-copilot",
+    "superdesign.aiModelProvider": "openrouter",
+    "kilo-code.allowedCommands": [
+        "git log",
+        "git diff",
+        "git show",
+        "npm test",
+        "npm install",
+        "tsc"
+    ],
+    "kilo-code.deniedCommands": [],
+    "cursor.enable_agent_window_setting": true,
+    "[dockercompose]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "amp.url": "https://ampcode.com/",
+    "amp.tab.enabled": true,
+    "editor.wordBasedSuggestions": "off"
 }

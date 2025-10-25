@@ -309,7 +309,26 @@
     "git diff",
     "git show"
   ],
-  "redhat.telemetry.enabled": false
+  "redhat.telemetry.enabled": false,
+  "chat.agent.enabled": true,
+  "yaml.schemas": {
+    "file:///Users/ashiknesin/.vscode/extensions/continue.continue-1.2.4-darwin-arm64/config-yaml-schema.json": [
+      ".continue/**/*.yaml"
+    ]
+  },
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "telemetry.telemetryLevel": "off",
+  "kilo-code.allowedCommands": [
+    "npm test",
+    "npm install",
+    "tsc",
+    "git log",
+    "git diff",
+    "git show"
+  ],
+  "update.showReleaseNotes": false,
+  "kilo-code.deniedCommands": [],
+  "editor.inlineSuggest.syntaxHighlightingEnabled": true
   // "[typescriptreact]": {
   //   "editor.defaultFormatter": "vscode.typescript-language-features"
   // }

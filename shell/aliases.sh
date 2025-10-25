@@ -85,7 +85,7 @@ exists()
 # Custom
 	alias py='python'
 	alias f='open -a Finder'
-	alias .e="subl ~/dotfiles"
+	alias .e="zed ~/dotfiles"
 	alias dld="aria2c -x 10"
 	# alias sshkey="cat ~/.ssh/id_rsa.pub | pbcopy && echo 'Public key copied to clipboard.'"
 	alias reload=". ~/.zshrc"
@@ -140,7 +140,7 @@ alias update='sudo softwareupdate --install --all \
 # alias rn="react-native"
 alias :q="exit"
 alias dcu="docker-compose up"
-alias cat="bat"
+# alias cat="bat"
 alias nd="npm run dev"
 if command -v 'htop' &> /dev/null; then
 		alias top="htop"

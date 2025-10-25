@@ -1,4 +1,4 @@
-PATH=~/.console-ninja/.bin:$PATH
+
 export VOLTA_HOME="$HOME/.volta"
 export PATH="$VOLTA_HOME/bin:$PATH"
 . "$HOME/.cargo/env"
@@ -7,3 +7,7 @@ export PATH="$VOLTA_HOME/bin:$PATH"
 eval "$(atuin init bash)"
 
 [ -s "$HOME/.deno/env" ] && . "/$HOME/.deno/env"
+
+. "$HOME/.local/bin/env"
+
+PATH=~/.console-ninja/.bin:$PATH
