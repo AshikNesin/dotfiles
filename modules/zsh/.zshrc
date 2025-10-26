@@ -41,8 +41,8 @@ export GOPATH=~/go
 source ~/dotfiles/shell/aliases.sh
 # git
 
-source ~/dotfiles/git/git-functions.sh
-source ~/dotfiles/git/git-aliases.sh
+source ~/dotfiles/modules/git/git-functions.sh
+source ~/dotfiles/modules/git/git-aliases.sh
 
 source ~/dotfiles/shell/function.sh
 
