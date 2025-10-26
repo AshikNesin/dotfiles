@@ -96,7 +96,7 @@ function gitleaks_fullscan() {
       --report-path gitleaks-report.json
 }
 
-ai_commit() {
+function ai_commit() {
   emulate -L zsh
   setopt NO_GLOB
 
