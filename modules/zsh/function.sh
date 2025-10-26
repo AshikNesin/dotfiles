@@ -72,7 +72,7 @@ unalias ai 2>/dev/null
 ai() {
   emulate -L zsh
   setopt NO_GLOB
-  local query="$*"
+  local query="$@" # multiple arguments are treated as a single string even when unquoted.
   local system_msg="You are a command line expert. The user wants to run a command but they don't know how. Return ONLY the exact shell command needed. Do not prepend with an explanation, no markdown, no code blocks - just return the raw command you think will solve their query."
 
   local payload
@@ -110,4 +110,50 @@ function gitleaks_fullscan() {
       --redact \
       --report-format json \
       --report-path gitleaks-report.json
+}
+
+ai_commit() {
+  emulate -L zsh
+  setopt NO_GLOB
+
+  # Stage all current changes
+  git add -A
+
+  # If no changes are staged, abort
+  if git diff --cached --quiet; then
+    echo "No staged changes to commit. Aborting."
+    return 1
+  fi
+
+  local diff
+  diff=$(git diff --cached)
+
+  local system_msg="You are a command line expert and commit message writer. The user has staged changes described below. Generate **only** a concise one-line git commit message in imperative mood that clearly reflects what was changed."
+  local user_msg="$diff"
+
+  local payload
+  payload=$(jq -n --arg sys "$system_msg" --arg usr "$user_msg" '{
+    model: "llama-3.1-8b-instant",
+    temperature: 0,
+    max_completion_tokens: 64,
+    messages: [
+      { role: "system", content: $sys },
+      { role: "user", content: $usr }
+    ]
+  }')
+
+  local generated_msg
+  generated_msg=$(curl -s "https://api.groq.com/openai/v1/chat/completions" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${GROQ_API_KEY}" \
+    -d "$payload" \
+    | jq -r '.choices[0].message.content' \
+    | tr -d '\000-\037' \
+    | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+  local cmd="git commit -m \"$generated_msg\""
+
+  # Push the generated command into your command line buffer, ready to edit or execute
+  print -z -- "$cmd"
 }
