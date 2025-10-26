@@ -101,3 +101,13 @@ ai() {
 
 # Ensure globbing is disabled when invoking `ai`
 alias ai='noglob ai'
+
+
+function gitleaks_fullscan() {
+    gitleaks detect \
+      --source . \
+      --log-opts="--all" \
+      --redact \
+      --report-format json \
+      --report-path gitleaks-report.json
+}

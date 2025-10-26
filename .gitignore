@@ -200,3 +200,4 @@ scripts/node_modules
 .cursorignore
 **/private/**/*
 **/local/**/*
+gitleaks-report.json
