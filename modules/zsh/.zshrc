@@ -38,13 +38,13 @@ export GOPATH=~/go
 
 
 # shell
-source ~/dotfiles/shell/aliases.sh
+source ~/dotfiles/modules/zsh/aliases.sh
 # git
 
 source ~/dotfiles/modules/git/git-functions.sh
 source ~/dotfiles/modules/git/git-aliases.sh
 
-source ~/dotfiles/shell/function.sh
+source ~/dotfiles/modules/zsh/function.sh
 
 # utils
 
