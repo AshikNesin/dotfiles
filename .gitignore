@@ -196,7 +196,7 @@ scripts/node_modules
 
 ## Others
 *.local
+*.local.*
 .cursorignore
 **/private/**/*
-
 **/local/**/*

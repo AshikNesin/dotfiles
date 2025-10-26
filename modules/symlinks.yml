@@ -6,27 +6,27 @@
 
 # Import private symlinks
 import:
-  - local/symlinks-private.yml
+  - modules/symlinks-private.local.yml
 
 links:
   # Shell configuration
   - source: modules/bash/.bashrc
     target: ~/.bashrc
-  
+
   - source: modules/zsh/.zshrc
     target: ~/.zshrc
-  
+
   # Git configuration
   - source: modules/git/.gitconfig
     target: ~/.gitconfig
-  
+
   - source: modules/git/.gitignore_global
     target: ~/.gitignore
-  
+
   - source: modules/zed/settings.json
     target: ~/.config/zed/settings.json
-  
+
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config
-  #   type: directory 
+  #   type: directory

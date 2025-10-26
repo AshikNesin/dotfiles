@@ -57,9 +57,9 @@ source ~/.profile
 fi
 
 
-if [ -f "$HOME/dotfiles/local/.env" ]
+if [ -f "$HOME/dotfiles/modules/zsh/local/.env" ]
 then
-    source ~/dotfiles/local/.env
+    source ~/dotfiles/modules/zsh/local/.env
 fi
 
 if [ -f "$HOME/dotfiles/local/.alias" ]
