@@ -4,6 +4,3 @@
 [submodule "utils/z"]
 	path = utils/z
 	url = https://github.com/rupa/z.git
-[submodule "local/chrome-extentions/bypass-paywalls-chrome"]
-	path = local/chrome-extentions/bypass-paywalls-chrome
-	url = https://github.com/iamadamdev/bypass-paywalls-chrome.git
