@@ -26,6 +26,8 @@ links:
   - source: modules/zed/settings.json
     target: ~/.config/zed/settings.json
 
+  - source: modules/vim/.vimrc
+    target: ~/.vimrc
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config
