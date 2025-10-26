@@ -128,7 +128,7 @@ ai_commit() {
   local diff
   diff=$(git diff --cached)
 
-  local system_msg="You are a command line expert and commit message writer. The user has staged changes described below. Generate **only** a concise one-line git commit message in imperative mood that clearly reflects what was changed."
+  local system_msg="You are a command line expert and commit message writer. The user has staged changes described below. Generate **only** a concise one-line git commit message in imperative mood that clearly reflects what was changed. Make sure the commit message does not include double quotes"
   local user_msg="$diff"
 
   local payload
@@ -157,3 +157,5 @@ ai_commit() {
   # Push the generated command into your command line buffer, ready to edit or execute
   print -z -- "$cmd"
 }
+
+alias aic='ai_commit'

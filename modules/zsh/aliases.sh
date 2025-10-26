@@ -150,3 +150,4 @@ alias node12='export PATH="$PATH:/usr/local/opt/node@12/bin"; node -v'
 if command -v 'lla' &> /dev/null; then
 		alias ls="lla"
 fi
+alias lsa='ls -A'
