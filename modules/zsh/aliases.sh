@@ -1,6 +1,6 @@
 # Set default editors
 export EDITOR="vim"
-export VISUAL="subl"
+export VISUAL="zed"
 
 exists()
 {
