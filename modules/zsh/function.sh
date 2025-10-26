@@ -1,13 +1,7 @@
-# `v` with no arguments opens the current directory in Vim, otherwise opens the
-# given location
-function v() {
-        if [ $# -eq 0 ]; then
-                vim .
-        else
-                vim "$@"
-        fi
+mkcd() {
+  [ "$#" -eq 0 ] && { echo "Usage: mkcd <dir>"; return 1; }
+  mkdir -p "$1" && cd "$1"
 }
-
 
 
 # `o` with no arguments opens current directory, otherwise opens the given
