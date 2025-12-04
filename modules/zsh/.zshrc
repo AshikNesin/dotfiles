@@ -1,3 +1,11 @@
+# https://scottspence.com/posts/speeding-up-my-zsh-shell
+# Add this to the TOP of your .zshrc
+# zmodload zsh/zprof
+# Top of .zshrc
+DISABLE_AUTO_UPDATE="true"
+DISABLE_MAGIC_FUNCTIONS="true"
+DISABLE_COMPFIX="true"
+
 # Fig pre block. Keep at the top of this file.
 
 if [ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]
@@ -192,3 +200,18 @@ export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 
 PATH=~/.console-ninja/.bin:$PATH
+export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
+
+# Added by Antigravity
+export PATH="/Users/ashiknesin/.antigravity/antigravity/bin:$PATH"
+
+
+# Smarter completion initialization
+autoload -Uz compinit
+if [ "$(date +'%j')" != "$(stat -f '%Sm' -t '%j' ~/.zcompdump 2>/dev/null)" ]; then
+    compinit
+else
+    compinit -C
+fi
+# Add this to the BOTTOM of your .zshrc
+# zprof

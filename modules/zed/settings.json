@@ -14,13 +14,24 @@
       "args": [],
       "projects": [
         {
-          "paths": ["/root/Code"]
+          "paths": [
+            "/root/Code"
+          ]
         },
         {
-          "paths": ["/root/Code/404less"]
+          "paths": [
+            "/root/Code/404less"
+          ]
         },
         {
-          "paths": ["/root/dotfiles"]
+          "paths": [
+            "/root/Code/nesins-finance-api"
+          ]
+        },
+        {
+          "paths": [
+            "/root/dotfiles"
+          ]
         }
       ],
       "nickname": "nesin-remote-dev"
@@ -51,8 +62,8 @@
   "agent": {
     "always_allow_tool_actions": true,
     "default_model": {
-      "provider": "copilot_chat",
-      "model": "claude-sonnet-4"
+      "provider": "Z.ai - GLM Coding Plan",
+      "model": "glm-4.5"
     }
   },
   "edit_predictions": {
@@ -83,5 +94,6 @@
         "!basedpyright"
       ]
     }
-  }
+  },
+  "soft_wrap": "editor_width"
 }

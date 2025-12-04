@@ -291,5 +291,8 @@
     },
     "amp.url": "https://ampcode.com/",
     "amp.tab.enabled": true,
-    "editor.wordBasedSuggestions": "off"
+    "editor.wordBasedSuggestions": "off",
+    "zenMode.fullScreen": true,
+    "zenMode.centerLayout": false,
+    "git.replaceTagsWhenPull": true
 }

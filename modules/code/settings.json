@@ -319,12 +319,12 @@
   "github.copilot.nextEditSuggestions.enabled": true,
   "telemetry.telemetryLevel": "off",
   "kilo-code.allowedCommands": [
-    "npm test",
-    "npm install",
-    "tsc",
     "git log",
     "git diff",
-    "git show"
+    "git show",
+    "npm test",
+    "npm install",
+    "tsc"
   ],
   "update.showReleaseNotes": false,
   "kilo-code.deniedCommands": [],
