@@ -74,7 +74,9 @@ evaluate_conditions() {
     fi
 
     # Check hostname condition
-    local hostname_condition=$(echo "$conditions" | $YQ_BIN e '.hostname' - 2>/dev/null)
+    # Use printf instead of echo to avoid escape issues
+    local hostname_condition
+    hostname_condition=$(printf '%s' "$conditions" | $YQ_BIN e '.hostname' - 2>/dev/null)
     if [ "$hostname_condition" != "null" ] && [ -n "$hostname_condition" ]; then
         if [[ "$HOSTNAME" != *"$hostname_condition"* ]]; then
             echo "  ⚠️  Skipping due to hostname condition: required=$hostname_condition, actual=$HOSTNAME"

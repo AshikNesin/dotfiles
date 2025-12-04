@@ -62,8 +62,8 @@
   "agent": {
     "always_allow_tool_actions": true,
     "default_model": {
-      "provider": "Z.ai - GLM Coding Plan",
-      "model": "glm-4.5"
+      "provider": "copilot_chat",
+      "model": "claude-sonnet-4.5"
     }
   },
   "edit_predictions": {
