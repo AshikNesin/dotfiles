@@ -25,6 +25,7 @@ brew install hyperkey
 
 brew install cleanshot
 brew install warp
+brew install imageoptim
 
 # Remove outdated versions from the cellar.
 brew cleanup
