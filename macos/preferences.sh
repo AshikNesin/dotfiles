@@ -303,7 +303,8 @@ defaults write "Apple Global Domain" com.apple.sound.uiaudio.enabled -int 0
 # Change Compute Name for Sharing                                             #
 ###############################################################################
 # sudo scutil --set ComputerName "ashik-mbp" && sudo scutil --set HostName "ashik-mbp" && sudo scutil --set LocalHostName "ashik-mbp"
-
+sudo scutil --set ComputerName "ashik-mac-mini" && sudo scutil --set HostName "ashik-mac-mini" && sudo scutil --set LocalHostName "ashik-mac-mini"
+sudo defaults write /Library/Preferences/SystemConfiguration/com.apple.smb.server NetBIOSName -string "Ashik's Mac Mini"
 ###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################

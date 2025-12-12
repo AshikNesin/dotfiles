@@ -8,8 +8,8 @@ git clone --recurse-submodules -j8 git@github.com:AshikNesin/dotfiles.git
 ### Setup New Machine
 
 ```
-chmod +x ~/dotfiles/osx/setup-a-new-machine.sh
-sh ~/dotfiles/osx/setup-a-new-machine.sh
+chmod +x ~/dotfiles/macos/setup-a-new-machine.sh
+sh ~/dotfiles/macos/setup-a-new-machine.sh
 
 ```
 
@@ -34,6 +34,3 @@ Inspiration and code was taken from many sources, including:
 ## License
 
 The code is available under the [MIT license](https://en.wikipedia.org/wiki/MIT_License).
-
-
-

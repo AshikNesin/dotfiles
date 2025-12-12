@@ -5,17 +5,10 @@ set -e
 # Default config file location
 CONFIG_FILE="${HOME}/dotfiles/modules/symlinks.yml"
 
-# Set path to local yq binary
-YQ_BIN="${HOME}/dotfiles/bin/yq"
-
-# Check if local yq binary exists
-if [ ! -f "$YQ_BIN" ] || [ ! -x "$YQ_BIN" ]; then
-    echo "Error: Local yq binary not found or not executable at $YQ_BIN"
-    echo "Please download it with:"
-    echo "wget https://github.com/mikefarah/yq/releases/download/v4.35.1/yq_darwin_amd64 -O ~/dotfiles/bin/yq"
-    echo "chmod +x ~/dotfiles/bin/yq"
-    exit 1
-fi
+# TODO: Install yq only if it is not available
+brew install yq
+# # Set path to local yq binary
+# YQ_BIN="${HOME}/dotfiles/bin/yq"
 
 # Get system information
 HOSTNAME=$(hostname)
@@ -76,7 +69,7 @@ evaluate_conditions() {
     # Check hostname condition
     # Use printf instead of echo to avoid escape issues
     local hostname_condition
-    hostname_condition=$(printf '%s' "$conditions" | $YQ_BIN e '.hostname' - 2>/dev/null)
+    hostname_condition=$(printf '%s' "$conditions" | yq e '.hostname' - 2>/dev/null)
     if [ "$hostname_condition" != "null" ] && [ -n "$hostname_condition" ]; then
         if [[ "$HOSTNAME" != *"$hostname_condition"* ]]; then
             echo "  ⚠️  Skipping due to hostname condition: required=$hostname_condition, actual=$HOSTNAME"
@@ -95,7 +88,7 @@ process_symlinks_file() {
     echo "Processing symlinks from: $file"
 
     # Process each symlink in the YAML file
-    $YQ_BIN e '.links[] | [.source, .target, .type, .conditions] | @json' "$file" | while read -r json_data; do
+    yq e '.links[] | [.source, .target, .type, .conditions] | @json' "$file" | while read -r json_data; do
         # Extract values from JSON
         source=$(echo "$json_data" | jq -r '.[0]')
         target=$(echo "$json_data" | jq -r '.[1]')
@@ -154,8 +147,8 @@ process_symlinks_file() {
 
 # Process imports first
 echo "Checking for imports..."
-if $YQ_BIN e '.import' "$CONFIG_FILE" &>/dev/null; then
-    $YQ_BIN e '.import[]' "$CONFIG_FILE" | while read -r import_file; do
+if yq e '.import' "$CONFIG_FILE" &>/dev/null; then
+    yq e '.import[]' "$CONFIG_FILE" | while read -r import_file; do
         # Handle relative paths for imported files (relative to dotfiles dir)
         if [[ ! "$import_file" = /* ]]; then
             import_file="${HOME}/dotfiles/$import_file"

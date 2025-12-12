@@ -6,12 +6,6 @@ DISABLE_AUTO_UPDATE="true"
 DISABLE_MAGIC_FUNCTIONS="true"
 DISABLE_COMPFIX="true"
 
-# Fig pre block. Keep at the top of this file.
-
-if [ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]
-then
-fi
-
 #export HOMEBREW_CASK_OPTS="--appdir=/Applications"
 export PGHOST=localhost
 
@@ -189,7 +183,7 @@ export ANT_OPTS="-Xmx6144m"
 
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+[ -s $PYENV_ROOT/bin ] && eval "$(pyenv init -)"
 # export JAVA_HOME=${SDKMAN_CANDIDATES_DIR}/java/${CURRENT}
 
 [ -s "$HOME/.cargo/env" ] && source "/$HOME/.cargo/env"
