@@ -8,3 +8,4 @@ brew install uv
 uv python install --default
 
 brew install git-extras pure trash wget fzf zsh git bat jq diff-so-fancy awscli htop hyperfine qpdf aria2
+brew install mas
