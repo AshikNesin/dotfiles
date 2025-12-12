@@ -7,9 +7,6 @@ CONFIG_FILE="${HOME}/dotfiles/modules/symlinks.yml"
 
 # TODO: Install yq only if it is not available
 brew install yq
-# # Set path to local yq binary
-# YQ_BIN="${HOME}/dotfiles/bin/yq"
-
 # Get system information
 HOSTNAME=$(hostname)
 
