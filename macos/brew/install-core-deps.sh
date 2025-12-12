@@ -27,5 +27,17 @@ brew install cleanshot
 brew install warp
 brew install imageoptim
 brew install tailscale
+brew install tableplus
+brew install iina
+brew install tabula
+
+brew install the-unarchiver
+brew install numi
+brew install simplenote
+brew install postman
+brew install sublime-merge
+brew install diffmerge
+# brew install qlcolorcode
+
 # Remove outdated versions from the cellar.
 brew cleanup
