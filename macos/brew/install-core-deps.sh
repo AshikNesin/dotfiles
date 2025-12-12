@@ -20,7 +20,11 @@ brew install firefox-nightly # Firefox Nightly
 brew install raycast
 brew install obsidian
 brew install visual-studio-code
+brew install arc
+brew install hyperkey
 
+brew install cleanshot
+brew install warp
 
 # Remove outdated versions from the cellar.
 brew cleanup
