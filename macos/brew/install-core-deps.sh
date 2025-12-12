@@ -38,6 +38,11 @@ brew install postman
 brew install sublime-merge
 brew install diffmerge
 # brew install qlcolorcode
+brew install qlmarkdown
+brew install telegram
+brew install android-studio
+brew install logitech-options
+brew install appcleaner
 
 # Remove outdated versions from the cellar.
 brew cleanup

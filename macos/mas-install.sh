@@ -12,3 +12,4 @@ mas install 931571202  # QuickShade - https://apps.apple.com/in/app/quickshade/i
 mas install 1611378436 # Pure Paste - https://apps.apple.com/in/app/pure-paste/id1611378436
 mas install 497799835  # Xcode - https://apps.apple.com/in/app/xcode/id497799835
 # mas install 639968404  # Parcel - Delivery Tracking - https://apps.apple.com/in/app/parcel-delivery-tracking/id639968404
+https://apps.apple.com/in/app/xcode/id497799835?mt=12
