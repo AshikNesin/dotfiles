@@ -20,3 +20,4 @@ brew install go
 brew install gnupg
 brew install dopplerhq/cli/doppler
 brew install droid
+brew install claude-code
