@@ -1,1 +1,2 @@
-curl -fsSL https://app.factory.ai/cli | sh
+
+dld https://downloads.shakkei.app/Shakkei.dmg

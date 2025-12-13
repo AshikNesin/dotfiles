@@ -26,7 +26,7 @@ brew install hyperkey
 brew install cleanshot
 brew install warp
 brew install imageoptim
-brew install tailscale
+brew install --cask tailscale
 brew install tableplus
 brew install iina
 brew install tabula
@@ -43,6 +43,9 @@ brew install telegram
 brew install android-studio
 brew install logitech-options
 brew install appcleaner
-
+brew install logseq
+brew install antinote
+brew install hazeover
+brew install lulu
 # Remove outdated versions from the cellar.
 brew cleanup
