@@ -47,5 +47,6 @@ brew install logseq
 brew install antinote
 brew install hazeover
 brew install lulu
+brew install --cask ollama
 # Remove outdated versions from the cellar.
 brew cleanup
