@@ -27,5 +27,3 @@ https://linuxhint.com/fix-bad-owners-or-permission-on-ssh-config/
 sudo chmod 600 ~/.ssh/config
 
 https://evanhahn.com/scripts-i-wrote-that-i-use-all-the-time/
-
-https://blip.net/
