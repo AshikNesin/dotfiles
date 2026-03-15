@@ -151,3 +151,4 @@ if command -v 'lla' &> /dev/null; then
 		alias ls="lla"
 fi
 alias lsa='ls -A'
+alias dclaude='docker sandbox run --credentials=none -v $HOME/.claude/:/agent/.claude:ro claude'

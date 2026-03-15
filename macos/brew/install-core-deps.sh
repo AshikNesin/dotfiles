@@ -50,3 +50,7 @@ brew install lulu
 brew install --cask ollama
 # Remove outdated versions from the cellar.
 brew cleanup
+brew install --cask docker
+brew install --cask antigravity
+brew install --cask steipete/tap/codexbar
+brew install tw93/tap/mole

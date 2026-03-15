@@ -209,3 +209,10 @@ else
 fi
 # Add this to the BOTTOM of your .zshrc
 # zprof
+
+# Added by Antigravity
+export PATH="/Users/ashiknesin/.antigravity/antigravity/bin:$PATH"
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+export CPPFLAGS="-I/opt/homebrew/opt/openjdk/include"
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export PATH=$JAVA_HOME/bin:$PATH

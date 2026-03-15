@@ -62,8 +62,8 @@
   "agent": {
     "always_allow_tool_actions": true,
     "default_model": {
-      "provider": "copilot_chat",
-      "model": "claude-sonnet-4.5"
+      "provider": "ollama",
+      "model": "glm-4.7:cloud"
     }
   },
   "edit_predictions": {
