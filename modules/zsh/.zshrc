@@ -88,7 +88,7 @@ export PATH="/usr/local/opt/node@8/bin:$PATH"
 
 # export JAVA_HOME=$(/usr/libexec/java_home)
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-17.jdk/Contents/Home
+# export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-17.jdk/Contents/Home
 
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_144.jdk/Contents/Home
 # export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_271.jdk/Contents/Home
@@ -214,5 +214,13 @@ fi
 export PATH="/Users/ashiknesin/.antigravity/antigravity/bin:$PATH"
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 export CPPFLAGS="-I/opt/homebrew/opt/openjdk/include"
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+# export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+# export PATH=$JAVA_HOME/bin:$PATH
+
+
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-8.jdk/Contents/Home
 export PATH=$JAVA_HOME/bin:$PATH
+
+# sentry
+fpath=("/Users/ashiknesin/.local/share/zsh/site-functions" $fpath)
+[[ -f ~/.safe-chain/scripts/init-posix.sh ]] && source ~/.safe-chain/scripts/init-posix.sh # Safe-chain Zsh initialization script

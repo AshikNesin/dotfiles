@@ -7,6 +7,34 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "debugger": {
+    "dock": "bottom",
+  },
+  "diff_view_style": "split",
+  "cli_default_open_behavior": "new_window",
+  "project_panel": {
+    "dock": "left",
+  },
+  "outline_panel": {
+    "dock": "right",
+  },
+  "collaboration_panel": {
+    "dock": "right",
+  },
+  "git_panel": {
+    "dock": "left",
+  },
+  "agent_servers": {
+    "pi-acp": {
+      "type": "registry",
+    },
+    "cursor": {
+      "type": "registry",
+    },
+    "claude-acp": {
+      "type": "registry",
+    },
+  },
   "confirm_quit": true,
   "ssh_connections": [
     {
@@ -35,6 +63,73 @@
         }
       ],
       "nickname": "nesin-remote-dev"
+    },
+    {
+      "host": "ssh.lightning.ai",
+      "username": "s_01kktwx9kaevtvavrtawcybg35",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/teamspace/studios/this_studio"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "ssh.lightning.ai",
+      "username": "s_01kktwx9kaevtvavrtawcybg35",
+      "args": [],
+      "projects": []
+    },
+    {
+      "host": "nesin-devbox",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/root/Code/ashiks-assistant"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "devbox",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/root/Code/ashiks-assistant"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "devbox",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/root/Code/ashiks-assistant"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "devbox.ashiknesin.com",
+      "args": [],
+      "projects": [
+        {
+          "paths": [
+            "/home/exedev/Code/groot"
+          ]
+        },
+        {
+          "paths": [
+            "/home/exedev/dotfiles"
+          ]
+        }
+      ]
     }
   ],
   "language_models": {
@@ -43,47 +138,85 @@
         "api_url": "https://api.z.ai/api/coding/paas/v4",
         "available_models": [
           {
-            "name": "glm-4.5",
+            "name": "glm-5",
             "display_name": null,
             "max_tokens": 200000,
             "max_output_tokens": 32000,
             "max_completion_tokens": 200000,
             "capabilities": {
               "tools": true,
-              "images": true,
+              "images": false,
               "parallel_tool_calls": false,
-              "prompt_cache_key": false
-            }
-          }
-        ]
-      }
-    }
+              "prompt_cache_key": false,
+            },
+          },
+          {
+            "name": "glm-5.1",
+            "display_name": null,
+            "max_tokens": 200000,
+            "max_output_tokens": 32000,
+            "max_completion_tokens": 200000,
+            "capabilities": {
+              "tools": true,
+              "images": false,
+              "parallel_tool_calls": false,
+              "prompt_cache_key": false,
+            },
+          },
+          {
+            "name": "glm-5-turbo",
+            "display_name": null,
+            "max_tokens": 200000,
+            "max_output_tokens": 32000,
+            "max_completion_tokens": 200000,
+            "capabilities": {
+              "tools": true,
+              "images": false,
+              "parallel_tool_calls": false,
+              "prompt_cache_key": false,
+            },
+          },
+        ],
+      },
+    },
   },
   "agent": {
-    "always_allow_tool_actions": true,
+    "sidebar_side": "right",
+    "dock": "left",
+    "default_profile": "write",
+    "favorite_models": [
+      {
+        "provider": "copilot_chat",
+        "model": "gpt-5.4-mini",
+        "enable_thinking": false,
+      },
+    ],
+    "tool_permissions": {
+      "default": "allow",
+    },
     "default_model": {
-      "provider": "ollama",
-      "model": "glm-4.7:cloud"
-    }
+      "enable_thinking": true,
+      "effort": "medium",
+      "provider": "openai-subscribed",
+      "model": "gpt-5.4",
+    },
   },
   "edit_predictions": {
+    "provider": "zed",
     "disabled_globs": [],
     "mode": "eager",
     "copilot": {
       "proxy": null,
-      "proxy_no_verify": null
+      "proxy_no_verify": null,
     },
-    "enabled_in_text_threads": false
-  },
-  "features": {
-    "edit_prediction_provider": "zed"
+    "enabled_in_text_threads": false,
   },
   "ui_font_size": 16,
   "buffer_font_size": 16,
   "theme": {
     "mode": "system",
     "light": "One Light",
-    "dark": "Solarized Dark"
+    "dark": "Solarized Dark",
   },
   "languages": {
     "Python": {
@@ -91,9 +224,9 @@
         // Disable basedpyright and enable Ty, and otherwise
         // use the default configuration.
         "ty",
-        "!basedpyright"
-      ]
-    }
+        "!basedpyright",
+      ],
+    },
   },
-  "soft_wrap": "editor_width"
+  "soft_wrap": "editor_width",
 }

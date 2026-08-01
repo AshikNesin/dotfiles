@@ -294,5 +294,8 @@
     "editor.wordBasedSuggestions": "off",
     "zenMode.fullScreen": true,
     "zenMode.centerLayout": false,
-    "git.replaceTagsWhenPull": true
+    "git.replaceTagsWhenPull": true,
+    "claudeCode.preferredLocation": "panel",
+    "gitlens.gitkraken.mcp.autoEnabled": false,
+    "window.autoDetectColorScheme": false
 }

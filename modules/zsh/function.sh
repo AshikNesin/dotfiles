@@ -143,3 +143,23 @@ function ai_commit() {
 }
 
 alias aic='ai_commit'
+
+function java_27(){
+    export JAVA_HOME="/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home"
+    export PATH=$JAVA_HOME/bin:$PATH
+}
+
+alias j27="java_27"
+
+function ccg() {
+  local zai_api_key="${ZAI_API_KEY:-your_zai_api_key}"
+
+  ANTHROPIC_AUTH_TOKEN="$zai_api_key" \
+  ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" \
+  API_TIMEOUT_MS="3000000" \
+  CLAUDE_CODE_AUTO_COMPACT_WINDOW="1000000" \
+  ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-4.5-air" \
+  ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5.2[1m]" \
+  ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.2[1m]" \
+  claude "$@"
+}

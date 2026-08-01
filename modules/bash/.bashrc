@@ -11,3 +11,4 @@ eval "$(atuin init bash)"
 . "$HOME/.local/bin/env"
 
 PATH=~/.console-ninja/.bin:$PATH
+source ~/.safe-chain/scripts/init-posix.sh # Safe-chain bash initialization script

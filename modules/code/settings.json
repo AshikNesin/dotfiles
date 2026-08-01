@@ -328,7 +328,13 @@
   ],
   "update.showReleaseNotes": false,
   "kilo-code.deniedCommands": [],
-  "editor.inlineSuggest.syntaxHighlightingEnabled": true
+  "editor.inlineSuggest.syntaxHighlightingEnabled": true,
+  "terminal.integrated.commandsToSkipShell": [
+    "kilo-code.new.agentManagerOpen",
+    "kilo-code.new.agentManager.showTerminal",
+    "kilo-code.new.agentManager.runScript"
+  ],
+  "kilo-code.new.agentWorkStyle": "unset"
   // "[typescriptreact]": {
   //   "editor.defaultFormatter": "vscode.typescript-language-features"
   // }
