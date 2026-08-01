@@ -64,7 +64,11 @@ if ! command -v pre-commit >/dev/null 2>&1; then
     fi
 fi
 if command -v pre-commit >/dev/null 2>&1; then
-    pre-commit install
+    # pre-commit install operates on the CURRENT working directory (no -C flag,
+    # unlike git). When invoked via curl|bash the cwd is $HOME, not the repo,
+    # so it fails with "git failed. Is it installed, and are you in a Git
+    # repository directory?" Run it from the repo root via a subshell.
+    (cd "$DOTFILES_DIR" && pre-commit install)
 fi
 
 # --- Oh My Zsh ---------------------------------------------------------
