@@ -1,0 +1,66 @@
+// Syncthing ignore rules for codebases
+
+// Git
+.git/
+
+// Node / JS / frontend
+node_modules/
+.next/
+.nuxt/
+.svelte-kit/
+dist/
+build/
+coverage/
+.cache/
+.turbo/
+.parcel-cache/
+.vite/
+.npm/
+.pnpm-store/
+
+// Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env/
+
+# Java / Android
+.gradle/
+.idea/
+*.iml
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+// React Native / Expo
+.expo/
+.expo-shared/
+metro-cache/
+
+// Apple / macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+// Editors
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+// Logs / temp
+*.log
+*.tmp
+tmp/
+temp/
+
+// App-specific or generated folders from your list
+Sandbox/
+.debris/
+_gsdata_/

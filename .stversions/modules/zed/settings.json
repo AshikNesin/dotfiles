@@ -7,11 +7,8 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
-  "debugger": {
-    "dock": "bottom",
-  },
   "diff_view_style": "split",
-  "cli_default_open_behavior": "new_window",
+  "cli_default_open_behavior": "existing_window",
   "project_panel": {
     "dock": "left",
   },
@@ -42,27 +39,19 @@
       "args": [],
       "projects": [
         {
-          "paths": [
-            "/root/Code"
-          ]
+          "paths": ["/root/Code"],
         },
         {
-          "paths": [
-            "/root/Code/404less"
-          ]
+          "paths": ["/root/Code/404less"],
         },
         {
-          "paths": [
-            "/root/Code/nesins-finance-api"
-          ]
+          "paths": ["/root/Code/nesins-finance-api"],
         },
         {
-          "paths": [
-            "/root/dotfiles"
-          ]
-        }
+          "paths": ["/root/dotfiles"],
+        },
       ],
-      "nickname": "nesin-remote-dev"
+      "nickname": "nesin-remote-dev",
     },
     {
       "host": "ssh.lightning.ai",
@@ -70,98 +59,43 @@
       "args": [],
       "projects": [
         {
-          "paths": [
-            "/teamspace/studios/this_studio"
-          ]
-        }
-      ]
+          "paths": ["/teamspace/studios/this_studio"],
+        },
+      ],
     },
     {
       "host": "ssh.lightning.ai",
       "username": "s_01kktwx9kaevtvavrtawcybg35",
       "args": [],
-      "projects": []
+      "projects": [],
     },
     {
       "host": "nesin-devbox",
       "args": [],
       "projects": [
         {
-          "paths": [
-            "/root/Code/ashiks-assistant"
-          ]
-        }
-      ]
+          "paths": ["/root/Code/ashiks-assistant"],
+        },
+      ],
     },
     {
       "host": "devbox",
       "args": [],
       "projects": [
         {
-          "paths": [
-            "/root/Code/ashiks-assistant"
-          ]
-        }
-      ]
+          "paths": ["/root/Code/ashiks-assistant"],
+        },
+      ],
     },
     {
       "host": "devbox",
       "args": [],
       "projects": [
         {
-          "paths": [
-            "/root/Code/ashiks-assistant"
-          ]
-        }
-      ]
-    },
-    {
-<<<<<<< Updated upstream
-      "host": "devbox.ashiknesin.com",
-      "args": [],
-      "projects": [
-        {
-          "paths": [
-            "/home/exedev/Code/groot"
-          ]
+          "paths": ["/root/Code/ashiks-assistant"],
         },
-        {
-          "paths": [
-            "/home/exedev/dotfiles"
-||||||| Stash base
-=======
-      "host": "nesins-devbox.exe.xyz",
-      "args": [],
-      "projects": []
+      ],
     },
-    {
-      "host": "devbox.ashiknesin.com",
-      "args": [],
-      "projects": [
-        {
-          "paths": [
-            "/home/exedev/Code"
-          ]
-        }
-      ]
-    },
-    {
-      "host": "devbox.ashiknesin.com",
-      "args": [],
-      "projects": [
-        {
-          "paths": [
-            "/home/exedev/Code/exe-devbox"
-          ]
-        },
-        {
-          "paths": [
-            "/home/exedev/Code/nesins-finance"
->>>>>>> Stashed changes
-          ]
-        }
-      ]
-    }
   ],
   "language_models": {
     "openai_compatible": {
@@ -229,7 +163,7 @@
       "enable_thinking": true,
       "effort": "medium",
       "provider": "openai-subscribed",
-      "model": "gpt-5.4",
+      "model": "gpt-5.4-mini",
     },
   },
   "edit_predictions": {
