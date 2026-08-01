@@ -1,19 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# macOS machine setup. Invoked by the root setup.sh dispatcher (or directly).
+#
+set -euo pipefail
 
-git submodule update --init --recursive
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-git submodule update --recursive --remote
+# zsh ships with macOS (default login shell since Catalina), so there are no
+# packages to install before the shared setup can run.
+bash "$SCRIPT_DIR/../shared/setup.sh"
 
-# Install pre-commit framework for Gitleaks
-if ! command -v pre-commit &> /dev/null; then
-    echo "Installing pre-commit framework..."
-    pip install pre-commit
-fi
-
-# Install pre-commit hooks
-echo "Setting up pre-commit hooks..."
-pre-commit install
-
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-
-~/dotfiles/modules/symlink.sh
+# NOTE: GUI apps are intentionally NOT driven from here. Run them manually:
+#   - Homebrew casks  -> macos/brew/install-core-deps.sh, install.sh
+#   - Mac App Store    -> macos/mas-install.sh
+#   - System prefs     -> macos/preferences.sh
+#   - Manual steps     -> macos/manual.md

@@ -5,13 +5,21 @@ git clone --recurse-submodules -j8 git@github.com:AshikNesin/dotfiles.git
 
 ```
 
-### Setup New Machine
+## Setup a New Machine
 
-```
-chmod +x ~/dotfiles/macos/setup-a-new-machine.sh
-sh ~/dotfiles/macos/setup-a-new-machine.sh
+One copy-paste one-liner works on macOS and Ubuntu — it clones the repo
+(if needed) and runs the matching OS setup (`macos/` or `ubuntu/`):
 
+```sh
+curl -fsSL https://raw.githubusercontent.com/AshikNesin/dotfiles/main/setup.sh | bash
 ```
+
+If the repo is already cloned, just run it locally:
+
+```sh
+cd ~/dotfiles && ./setup.sh
+```
+
 
 # Local Bin
 

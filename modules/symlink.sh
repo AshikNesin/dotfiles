@@ -5,8 +5,58 @@ set -e
 # Default config file location
 CONFIG_FILE="${HOME}/dotfiles/modules/symlinks.yml"
 
-# TODO: Install yq only if it is not available
-brew install yq
+# --- Cross-platform dependency install (yq + jq) ------------------------
+# This script uses the *mikefarah* (Go) `yq`, invoked as `yq e '<expr>'`.
+# We deliberately AVOID `apt install yq` on Debian/Ubuntu: that ships the
+# *kislyuk* (Python) yq whose CLI (`yq .x`) is incompatible with `yq e`.
+# Instead we fetch the official Go binary so the syntax is identical on
+# macOS and Linux.
+ensure_yq_installed() {
+    if command -v yq >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS — Homebrew's `yq` formula is the mikefarah Go binary.
+        brew install yq
+        return
+    fi
+
+    local arch url
+    case "$(uname -m)" in
+        x86_64|amd64)  arch="amd64"  ;;
+        aarch64|arm64) arch="arm64"  ;;
+        *)
+            echo "Unsupported architecture for yq: $(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+    url="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}"
+    echo "Installing yq (mikefarah) -> /usr/local/bin/yq"
+    sudo mkdir -p /usr/local/bin
+    sudo curl -fsSL "$url" -o /usr/local/bin/yq
+    sudo chmod +x /usr/local/bin/yq
+}
+
+ensure_jq_installed() {
+    if command -v jq >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        brew install jq
+    elif [[ -f /etc/os-release ]]; then
+        sudo apt-get update
+        sudo apt-get install -y jq
+    else
+        echo "Unsupported OS for installing jq. Please install jq manually." >&2
+        exit 1
+    fi
+}
+
+ensure_yq_installed
+ensure_jq_installed
+
 # Get system information
 HOSTNAME=$(hostname)
 

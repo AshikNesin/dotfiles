@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
+#
+# Ubuntu machine setup. Invoked by the root setup.sh dispatcher (or directly).
+#
 set -euo pipefail
 
-# Only run on Ubuntu
+# Safety guard: no-op on non-Ubuntu/Debian.
 [ -f /etc/os-release ] || exit 0
 . /etc/os-release
+case "${ID:-}" in
+  ubuntu|debian) ;;
+  *) echo "Not Ubuntu/Debian. Skipping ubuntu setup."; exit 0 ;;
+esac
 
-if [ "${ID:-}" != "ubuntu" ]; then
-  echo "Not Ubuntu. Skipping."
-  exit 0
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-log() {
-  echo
-  echo "==> $1"
-}
+log() { echo; echo "==> $1"; }
 
 install_if_missing() {
   if command -v "$1" >/dev/null 2>&1; then
@@ -38,37 +39,10 @@ install_script_if_missing() {
   fi
 }
 
-# Detect Exe network
-ON_EXE_DEV=0
-if curl -fsS --max-time 1 https://reflection.int.exe.xyz >/dev/null 2>&1; then
-  ON_EXE_DEV=1
-fi
-
-# Install required packages
+# --- Ubuntu prerequisites (zsh must exist before shared setup) ---------
 install_if_missing curl
 install_if_missing git
 install_if_missing zsh
-
-# Clone or update dotfiles
-DOTFILES_DIR="$HOME/dotfiles"
-
-if [ -d "$DOTFILES_DIR/.git" ]; then
-  log "Updating dotfiles"
-  git -C "$DOTFILES_DIR" pull --ff-only
-else
-  log "Cloning dotfiles"
-  git clone https://github.com/AshikNesin/dotfiles.git "$DOTFILES_DIR"
-fi
-
-# Install Oh My Zsh
-if [ -d "$HOME/.oh-my-zsh" ]; then
-  log "Oh My Zsh already installed"
-else
-  log "Installing Oh My Zsh"
-  RUNZSH=no CHSH=no sh -c "$(
-    curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
-  )"
-fi
 
 # Set zsh as default shell
 zsh_path="$(command -v zsh)"
@@ -87,7 +61,16 @@ else
   log "Log out and back in to start using zsh."
 fi
 
-# Install developer tools
+# --- Shared setup: submodules, pre-commit, Oh My Zsh, symlinks ---------
+bash "$SCRIPT_DIR/../shared/setup.sh"
+
+# --- Developer tools (Ubuntu-specific) ---------------------------------
+# Detect Exe network
+ON_EXE_DEV=0
+if curl -fsS --max-time 1 https://reflection.int.exe.xyz >/dev/null 2>&1; then
+  ON_EXE_DEV=1
+fi
+
 install_script_if_missing tailscale "Tailscale" "https://tailscale.com/install.sh"
 install_script_if_missing herdr "Herdr" "https://herdr.dev/install.sh"
 
