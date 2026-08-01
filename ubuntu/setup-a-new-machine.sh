@@ -43,10 +43,36 @@ install_script_if_missing() {
   fi
 }
 
+# Fresh Ubuntu cloud/minimal images ship without a generated UTF-8 locale, so
+# prompt glyphs (pure's \u21e3/\u21e1/\u276f, etc.) render as raw bytes like
+# "\M-b\M-^G\M-#". Generate en_US.UTF-8 and make it the default for logins.
+ensure_utf8_locale() {
+  if ! command -v locale-gen >/dev/null 2>&1; then
+    log "Installing locales package"
+    sudo apt-get update
+    sudo apt-get install -y locales
+  fi
+
+  if ! locale -a 2>/dev/null | grep -iq '^en_US\.utf'; then
+    log "Generating en_US.UTF-8 locale"
+    sudo locale-gen en_US.UTF-8
+  fi
+
+  # Persist for future logins (/etc/default/locale)
+  sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+  # Apply to this script's process tree so subprocesses render UTF-8 now
+  export LANG=en_US.UTF-8
+  export LC_ALL=en_US.UTF-8
+}
+
 # --- Ubuntu prerequisites (zsh must exist before shared setup) ---------
 install_if_missing curl
 install_if_missing git
 install_if_missing zsh
+
+# UTF-8 locale (before the prompt ever loads, so glyphs render correctly)
+ensure_utf8_locale
 
 # Set zsh as default shell
 zsh_path="$(command -v zsh)"
@@ -92,9 +118,9 @@ fi
 
 log "Done 🎉"
 echo
-echo "  ✅  Setup complete. Dotfiles are symlinked and zsh is configured."
+echo "  ✅  Setup complete. Dotfiles symlinked, zsh configured, UTF-8 locale set."
 echo
-echo "  To use the new shell in THIS terminal:   exec zsh"
-echo "  (already in zsh?  source ~/.zshrc  also reloads it)"
-echo "  Or just log out and back in — zsh is now your login shell."
+echo "  To use it in THIS terminal:"
+echo "    export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 && exec zsh"
+echo "  Or just log out and back in (UTF-8 locale + zsh apply automatically)."
 echo
