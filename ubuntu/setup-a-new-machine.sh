@@ -35,7 +35,11 @@ install_script_if_missing() {
     log "$name already installed"
   else
     log "Installing $name"
-    curl -fsSL "$url" | sh
+    # Pipe to bash, not sh: on Ubuntu /bin/sh is dash, which rejects bash-isms
+    # like `set -o pipefail` (ExeBox's installer uses it -> "Illegal option") and
+    # surfaces noisy "printf: I/O error" from herdr's awk pipeline. bash is a
+    # POSIX superset, so sh-based installers (tailscale, herdr) run unchanged.
+    curl -fsSL "$url" | bash
   fi
 }
 
