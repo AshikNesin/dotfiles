@@ -1,4 +1,5 @@
-brew install pre-commit
+# pre-commit is installed via uv in shared/setup.sh (`uv tool install`),
+# so it's consistent across macOS and Ubuntu — no brew formula needed here.
 brew install volta
 volta setup
 volta install node

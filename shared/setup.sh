@@ -18,20 +18,49 @@ DOTFILES_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 log() { echo; echo "==> $1"; }
 
+# User-space tools (uv, and the CLIs `uv tool install` exposes — e.g.
+# pre-commit) live in ~/.local/bin. Make sure it's on PATH for this script
+# and every subprocess, before we go probing for those commands below.
+case ":${PATH:-}:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 # --- Git submodules (pure prompt, z, ...) ------------------------------
 log "Initializing git submodules"
 git -C "$DOTFILES_DIR" submodule update --init --recursive
 git -C "$DOTFILES_DIR" submodule update --recursive --remote
 
 # --- pre-commit (gitleaks) ---------------------------------------------
-# Best-effort: install the binary if a pip is available, then wire the hook.
+# Best-effort: install the binary if possible, then wire the hook.
 # We never abort the whole setup if this step can't complete.
+#
+# PEP 668: Ubuntu 24.04+ / Debian 12+ mark the system Python as
+# "externally managed" and reject `pip install` system-wide. We install
+# pre-commit with uv (`tool install` -> isolated env in ~/.local/bin),
+# which is PEP 668-safe and cross-platform. uv itself is bootstrapped
+# below from its standalone installer if it isn't already present, so this
+# one path works on BOTH macOS and Linux; pip is only a last-resort fallback.
 log "Setting up pre-commit"
+# Bootstrap uv if it's missing — its standalone installer is cross-platform
+# (macOS + Linux) and lands in ~/.local/bin (already on PATH above). This
+# means pre-commit works on a fresh macOS box too, not just Ubuntu.
+if ! command -v uv >/dev/null 2>&1; then
+    log "Installing uv (standalone installer)"
+    curl -LsSf https://astral.sh/uv/install.sh | sh \
+        || echo "    uv installer failed; will try pip fallbacks below"
+fi
 if ! command -v pre-commit >/dev/null 2>&1; then
-    if   command -v pip  >/dev/null 2>&1; then pip  install pre-commit || echo "    pip install failed (PEP 668 on newer Ubuntu?); skipping pre-commit"
-    elif command -v pip3 >/dev/null 2>&1; then pip3 install pre-commit || echo "    pip3 install failed; skipping pre-commit"
+    if   command -v uv   >/dev/null 2>&1; then
+        uv tool install pre-commit || echo "    uv tool install failed; skipping pre-commit"
+    elif command -v pipx >/dev/null 2>&1; then
+        pipx install pre-commit || echo "    pipx install failed; skipping pre-commit"
+    elif command -v pip  >/dev/null 2>&1; then
+        pip  install --user pre-commit 2>/dev/null || pip  install pre-commit 2>/dev/null || echo "    pip install failed (PEP 668 on newer Ubuntu? install uv); skipping pre-commit"
+    elif command -v pip3 >/dev/null 2>&1; then
+        pip3 install --user pre-commit 2>/dev/null || pip3 install pre-commit 2>/dev/null || echo "    pip3 install failed (PEP 668 on newer Ubuntu? install uv); skipping pre-commit"
     else
-        echo "    pip not found — install python3-pip (or pipx), then run: pip install pre-commit"
+        echo "    uv/pip not found — install uv (https://docs.astral.sh/uv/), then run: uv tool install pre-commit"
     fi
 fi
 if command -v pre-commit >/dev/null 2>&1; then

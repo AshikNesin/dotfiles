@@ -70,6 +70,8 @@ ensure_utf8_locale() {
 install_if_missing curl
 install_if_missing git
 install_if_missing zsh
+# uv (for pre-commit) is bootstrapped in shared/setup.sh via its
+# cross-platform standalone installer, so it needs no per-OS handling here.
 
 # UTF-8 locale (before the prompt ever loads, so glyphs render correctly)
 ensure_utf8_locale
