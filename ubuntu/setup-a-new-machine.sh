@@ -91,3 +91,10 @@ if [ "$ON_EXE_DEV" -eq 1 ]; then
 fi
 
 log "Done 🎉"
+echo
+echo "  ✅  Setup complete. Dotfiles are symlinked and zsh is configured."
+echo
+echo "  To use the new shell in THIS terminal:   exec zsh"
+echo "  (already in zsh?  source ~/.zshrc  also reloads it)"
+echo "  Or just log out and back in — zsh is now your login shell."
+echo
