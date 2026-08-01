@@ -203,7 +203,10 @@ if yq e '.import' "$CONFIG_FILE" &>/dev/null; then
 
         if [ -f "$import_file" ]; then
             process_symlinks_file "$import_file"
-        else
+        elif [[ "$import_file" != *.local.yml && "$import_file" != *.local.yaml ]]; then
+            # Only warn for genuinely missing imports. Files matching
+            # *.local.{yml,yaml} are optional by convention (gitignored,
+            # per-machine), so their absence on a fresh machine is expected.
             echo "⚠️  Warning: Import file not found: $import_file"
         fi
     done
