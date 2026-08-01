@@ -57,4 +57,20 @@ else
   log "zsh is already the default shell"
 fi
 
+# Install Tailscale
+if ! command -v tailscale >/dev/null 2>&1; then
+  log "Installing Tailscale"
+  curl -fsSL https://tailscale.com/install.sh | sh
+else
+  log "Tailscale already installed"
+fi
+
+# Install Herdr
+if ! command -v herdr >/dev/null 2>&1; then
+  log "Installing Herdr"
+  curl -fsSL https://herdr.dev/install.sh | sh
+else
+  log "Herdr already installed"
+fi
+
 log "Done"
