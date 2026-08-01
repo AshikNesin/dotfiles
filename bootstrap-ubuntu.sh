@@ -25,6 +25,25 @@ install_if_missing() {
   fi
 }
 
+install_script_if_missing() {
+  local command="$1"
+  local name="$2"
+  local url="$3"
+
+  if command -v "$command" >/dev/null 2>&1; then
+    log "$name already installed"
+  else
+    log "Installing $name"
+    curl -fsSL "$url" | sh
+  fi
+}
+
+# Detect Exe network
+ON_EXE_DEV=0
+if curl -fsS --max-time 1 https://reflection.int.exe.xyz >/dev/null 2>&1; then
+  ON_EXE_DEV=1
+fi
+
 # Install required packages
 install_if_missing curl
 install_if_missing git
@@ -68,20 +87,14 @@ else
   log "Log out and back in to start using zsh."
 fi
 
-# Install Tailscale
-if command -v tailscale >/dev/null 2>&1; then
-  log "Tailscale already installed"
-else
-  log "Installing Tailscale"
-  curl -fsSL https://tailscale.com/install.sh | sh
-fi
+# Install developer tools
+install_script_if_missing tailscale "Tailscale" "https://tailscale.com/install.sh"
+install_script_if_missing herdr "Herdr" "https://herdr.dev/install.sh"
 
-# Install Herdr
-if command -v herdr >/dev/null 2>&1; then
-  log "Herdr already installed"
-else
-  log "Installing Herdr"
-  curl -fsSL https://herdr.dev/install.sh | sh
+# Install ExeBox (only on Exe network)
+if [ "$ON_EXE_DEV" -eq 1 ]; then
+  install_script_if_missing exebox "ExeBox" \
+    "https://raw.githubusercontent.com/AshikNesin/exebox/main/install.sh"
 fi
 
 log "Done 🎉"
