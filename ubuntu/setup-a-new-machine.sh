@@ -50,14 +50,20 @@ zsh_path="$(command -v zsh)"
 if [ "${SHELL:-}" = "$zsh_path" ]; then
   log "zsh is already the default shell"
 else
+  # Ensure zsh is a permitted login shell (chsh validates against /etc/shells).
   if ! grep -qx "$zsh_path" /etc/shells; then
-    echo "$zsh_path is not listed in /etc/shells"
-    echo "Run: echo '$zsh_path' | sudo tee -a /etc/shells"
-    exit 1
+    log "Adding $zsh_path to /etc/shells"
+    echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null
   fi
 
+  # Change the login shell WITHOUT going through chsh's interactive PAM
+  # prompt, which fails ("PAM: Authentication failure") on cloud / NOPASSWD-
+  # sudo boxes where the account has no usable password. Run as root via sudo
+  # and chsh skips the password prompt; usermod is the bulletproof fallback.
   log "Setting zsh as default shell"
-  chsh -s "$zsh_path"
+  if ! sudo chsh -s "$zsh_path" "$(id -un)" 2>/dev/null; then
+    sudo usermod -s "$zsh_path" "$(id -un)"
+  fi
   log "Log out and back in to start using zsh."
 fi
 
