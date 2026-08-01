@@ -12,7 +12,10 @@ CONFIG_FILE="${HOME}/dotfiles/modules/symlinks.yml"
 # Instead we fetch the official Go binary so the syntax is identical on
 # macOS and Linux.
 ensure_yq_installed() {
-    if command -v yq >/dev/null 2>&1; then
+    # `command -v` alone isn't enough: a stale or wrong-arch binary on PATH
+    # (e.g. a Mach-O yq committed from macOS) is "found" but fails to execute
+    # with "Exec format error". Verify yq actually runs before trusting it.
+    if command -v yq >/dev/null 2>&1 && yq --version >/dev/null 2>&1; then
         return 0
     fi
 
@@ -39,7 +42,8 @@ ensure_yq_installed() {
 }
 
 ensure_jq_installed() {
-    if command -v jq >/dev/null 2>&1; then
+    # Same guard as yq: don't trust a binary that's merely on PATH.
+    if command -v jq >/dev/null 2>&1 && jq --version >/dev/null 2>&1; then
         return 0
     fi
 

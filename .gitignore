@@ -201,3 +201,8 @@ scripts/node_modules
 **/private/**/*
 **/local/**/*
 gitleaks-report.json
+
+# Prebuilt/downloaded binaries don't belong in a cross-platform repo —
+# a macOS Mach-O yq committed here broke Linux with "Exec format error"
+# (~/dotfiles/bin is on PATH, so it shadowed the real yq).
+/bin/yq
