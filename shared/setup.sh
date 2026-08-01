@@ -71,6 +71,29 @@ if command -v pre-commit >/dev/null 2>&1; then
     (cd "$DOTFILES_DIR" && pre-commit install)
 fi
 
+# --- Node.js + global npm packages (hunkdiff) -------------------------
+# Ensure Node.js is available. On a fresh machine without node, bootstrap it
+# via volta — the same tool the macOS brew setup (macos/brew/binaries.sh)
+# uses — which has a cross-platform standalone installer (macOS + Linux).
+# `volta install node` fetches the latest LTS. If node is already present
+# (system, brew, nvm, …) we leave it untouched and just install npm packages.
+if ! command -v node >/dev/null 2>&1; then
+    log "Installing Node.js (latest LTS via volta)"
+    if curl -fsSL https://get.volta.sh | bash; then
+        # The installer updates shell profiles, but not THIS process's PATH,
+        # so volta/node/npm are unreachable until we export it manually.
+        export VOLTA_HOME="$HOME/.volta"
+        export PATH="$VOLTA_HOME/bin:$PATH"
+        volta install node || echo "    volta install node failed; skipping npm packages"
+    else
+        echo "    volta installer failed; skipping Node.js setup"
+    fi
+fi
+if command -v npm >/dev/null 2>&1; then
+    log "Installing global npm packages (hunkdiff)"
+    npm install -g hunkdiff || echo "    npm install hunkdiff failed; continuing"
+fi
+
 # --- Oh My Zsh ---------------------------------------------------------
 # Non-interactive (RUNZSH=no CHSH=no): we don't want the installer to spawn a
 # shell or change the login shell mid-script. macOS defaults to zsh already;
