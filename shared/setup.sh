@@ -72,24 +72,35 @@ if command -v pre-commit >/dev/null 2>&1; then
 fi
 
 # --- Node.js + global npm packages (hunkdiff) -------------------------
-# Ensure Node.js is available. On a fresh machine without node, bootstrap it
-# via volta — the same tool the macOS brew setup (macos/brew/binaries.sh)
-# uses — which has a cross-platform standalone installer (macOS + Linux).
-# `volta install node` fetches the latest LTS. If node is already present
-# (system, brew, nvm, …) we leave it untouched and just install npm packages.
-if ! command -v node >/dev/null 2>&1; then
-    log "Installing Node.js (latest LTS via volta)"
-    if curl -fsSL https://get.volta.sh | bash; then
-        # The installer updates shell profiles, but not THIS process's PATH,
-        # so volta/node/npm are unreachable until we export it manually.
-        export VOLTA_HOME="$HOME/.volta"
-        export PATH="$VOLTA_HOME/bin:$PATH"
-        volta install node || echo "    volta install node failed; skipping npm packages"
-    else
-        echo "    volta installer failed; skipping Node.js setup"
+# Keep Node.js and global npm packages in the user's home directory. The
+# system Node.js installation (if present) uses /usr and makes `npm install
+# -g` fail with EACCES for non-root users. nvm is installed even when a system
+# Node.js is already available so this setup always selects the user-owned
+# runtime.
+NVM_VERSION="v0.40.6"
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+node_ready=0
+
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    log "Installing nvm $NVM_VERSION"
+    if ! curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | bash; then
+        echo "    nvm installer failed; skipping Node.js setup"
     fi
 fi
-if command -v npm >/dev/null 2>&1; then
+
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/nvm.sh"
+    if nvm install --lts \
+        && nvm alias default 'lts/*' \
+        && nvm use --silent default; then
+        node_ready=1
+    else
+        echo "    nvm could not install Node.js; skipping npm packages"
+    fi
+fi
+
+if [ "$node_ready" -eq 1 ] && command -v npm >/dev/null 2>&1; then
     log "Installing global npm packages (hunkdiff)"
     npm install -g hunkdiff || echo "    npm install hunkdiff failed; continuing"
 fi

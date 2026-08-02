@@ -1,9 +1,7 @@
 # pre-commit is installed via uv in shared/setup.sh (`uv tool install`),
 # so it's consistent across macOS and Ubuntu — no brew formula needed here.
-brew install volta
-volta setup
-volta install node
-
+# Node.js and npm are installed per-user by shared/setup.sh via nvm.
+# Keeping them out of Homebrew avoids system-wide npm global installs.
 brew install uv
 # https://docs.astral.sh/uv/guides/install-python/#viewing-python-installations
 uv python install --default

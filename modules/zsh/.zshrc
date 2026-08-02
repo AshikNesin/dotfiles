@@ -118,20 +118,17 @@ fpath+=($HOME/dotfiles/utils/pure)
 autoload -U promptinit; promptinit
 prompt pure
 
-# n (node version manager)
-export N_PREFIX=$HOME/.n
-export PATH="$N_PREFIX/bin:$PATH"
-
-# Fig
+# nvm (Node.js version manager)
+export NVM_DIR="$HOME/.nvm"
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    source "$NVM_DIR/nvm.sh"
+fi
+[[ -s "$NVM_DIR/bash_completion" ]] && source "$NVM_DIR/bash_completion"
 [ -f "$HOME/.fig/shell/zshrc.post.zsh" ] && source "$HOME/.fig/shell/zshrc.post.zsh"
 
 # SDKMAN
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-
-# Volta
-export VOLTA_HOME="$HOME/.volta"
-export PATH="$VOLTA_HOME/bin:$PATH"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
