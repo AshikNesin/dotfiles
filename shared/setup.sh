@@ -100,6 +100,16 @@ if [ "$node_ready" -eq 1 ]; then
     volta install hunkdiff || echo "    volta install hunkdiff failed; continuing"
 fi
 
+# --- Factory CLI (droid) ------------------------------------------------
+# Install the Factory CLI in the user's ~/.local/bin via the official
+# installer. Keep this in shared setup so both macOS and Ubuntu get it.
+log "Installing Factory CLI"
+if command -v droid >/dev/null 2>&1; then
+    echo "    Factory CLI already installed"
+else
+    curl -fsSL https://app.factory.ai/cli | sh
+fi
+
 # --- Oh My Zsh ---------------------------------------------------------
 # Non-interactive (RUNZSH=no CHSH=no): we don't want the installer to spawn a
 # shell or change the login shell mid-script. macOS defaults to zsh already;
