@@ -21,3 +21,6 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
+
+# pi-coding-agent: ensure Volta bin takes precedence over ~/.local/bin
+export PATH="$HOME/.volta/bin:$HOME/.local/bin:$PATH"
