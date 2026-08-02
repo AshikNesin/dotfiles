@@ -74,35 +74,30 @@ fi
 # --- Node.js + global npm packages (hunkdiff) -------------------------
 # Keep Node.js and global npm packages in the user's home directory. The
 # system Node.js installation (if present) uses /usr and makes `npm install
-# -g` fail with EACCES for non-root users. nvm is installed even when a system
-# Node.js is already available so this setup always selects the user-owned
-# runtime.
-NVM_VERSION="v0.40.6"
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+# -g` fail with EACCES for non-root users. Volta provides user-owned Node.js
+# runtimes and stable shims for global CLI tools.
+export VOLTA_HOME="${VOLTA_HOME:-$HOME/.volta}"
+export PATH="$VOLTA_HOME/bin:$PATH"
 node_ready=0
 
-if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-    log "Installing nvm $NVM_VERSION"
-    if ! curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | bash; then
-        echo "    nvm installer failed; skipping Node.js setup"
+if ! command -v volta >/dev/null 2>&1; then
+    log "Installing Volta"
+    if ! curl -fsSL https://get.volta.sh | bash; then
+        echo "    Volta installer failed; skipping Node.js setup"
     fi
 fi
 
-if [ -s "$NVM_DIR/nvm.sh" ]; then
-    # shellcheck disable=SC1090
-    . "$NVM_DIR/nvm.sh"
-    if nvm install --lts \
-        && nvm alias default 'lts/*' \
-        && nvm use --silent default; then
+if command -v volta >/dev/null 2>&1; then
+    if volta install node; then
         node_ready=1
     else
-        echo "    nvm could not install Node.js; skipping npm packages"
+        echo "    Volta could not install Node.js; skipping npm packages"
     fi
 fi
 
-if [ "$node_ready" -eq 1 ] && command -v npm >/dev/null 2>&1; then
+if [ "$node_ready" -eq 1 ]; then
     log "Installing global npm packages (hunkdiff)"
-    npm install -g hunkdiff || echo "    npm install hunkdiff failed; continuing"
+    volta install hunkdiff || echo "    volta install hunkdiff failed; continuing"
 fi
 
 # --- Oh My Zsh ---------------------------------------------------------
