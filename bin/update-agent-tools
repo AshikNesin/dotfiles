@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#
+# Keep the user-installed coding tools updateable.
+#
+# Jean was originally installed as root at /usr/local/bin, but its systemd
+# service runs as the normal user. That lets Jean read/run the binary, but not
+# replace it during a self-update. This script installs Jean into the user's
+# writable ~/.local/bin, points the system service there, and keeps the old
+# system path as a compatibility symlink.
+#
+# It also updates the Volta-managed Codex and Command Code CLIs. Override the
+# package specs when a pinned version is needed, for example:
+#
+#   CODEX_SPEC=@openai/codex@0.147.0 \
+#   COMMAND_CODE_SPEC=command-code@1.15.0 \
+#   ~/dotfiles/bin/update-agent-tools
+#
+set -euo pipefail
+
+JEAN_REPO="${JEAN_REPO:-coollabsio/jean}"
+JEAN_VERSION="${JEAN_VERSION:-latest}"
+CODEX_SPEC="${CODEX_SPEC:-@openai/codex@latest}"
+COMMAND_CODE_SPEC="${COMMAND_CODE_SPEC:-command-code@latest}"
+JEAN_USER_BIN="${JEAN_USER_BIN:-$HOME/.local/bin/jean-server}"
+JEAN_SYSTEM_BIN="${JEAN_SYSTEM_BIN:-/usr/local/bin/jean-server}"
+JEAN_SERVICE="${JEAN_SERVICE:-jean-server.service}"
+
+log() { printf '\n==> %s\n' "$*"; }
+warn() { printf 'warning: %s\n' "$*" >&2; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+    cat <<'EOF'
+Usage: update-agent-tools [options]
+
+Update the user-owned Jean server, Codex CLI, and Command Code CLI.
+
+Options:
+  --check          Show installed versions and exit without changing anything.
+  --skip-jean      Do not update or reconfigure Jean.
+  --skip-clis      Do not update Codex or Command Code.
+  -h, --help       Show this help.
+
+Environment overrides:
+  JEAN_VERSION       Jean release tag/version, or latest (default: latest).
+  CODEX_SPEC         Volta package spec (default: @openai/codex@latest).
+  COMMAND_CODE_SPEC Volta package spec (default: command-code@latest).
+EOF
+}
+
+CHECK_ONLY=0
+SKIP_JEAN=0
+SKIP_CLIS=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --check) CHECK_ONLY=1 ;;
+        --skip-jean) SKIP_JEAN=1 ;;
+        --skip-clis) SKIP_CLIS=1 ;;
+        -h|--help) usage; exit 0 ;;
+        *) die "unknown option: $1 (try --help)" ;;
+    esac
+    shift
+done
+
+command -v curl >/dev/null 2>&1 || die "curl is required"
+command -v awk >/dev/null 2>&1 || die "awk is required"
+command -v sha256sum >/dev/null 2>&1 || die "sha256sum is required"
+
+export VOLTA_HOME="${VOLTA_HOME:-$HOME/.volta}"
+export PATH="$VOLTA_HOME/bin:$HOME/.local/bin:$PATH"
+
+show_versions() {
+    printf '%-16s %s\n' "Jean" "$(jean-server --version 2>/dev/null || printf 'not installed')"
+    printf '%-16s %s\n' "Codex" "$(codex --version 2>/dev/null || printf 'not installed')"
+    printf '%-16s %s\n' "Command Code" "$(commandcode --version 2>/dev/null || printf 'not installed')"
+    if [[ -f "/etc/systemd/system/$JEAN_SERVICE" ]] || systemctl cat "$JEAN_SERVICE" >/dev/null 2>&1; then
+        printf '%-16s %s\n' "Jean service" "$(systemctl is-active "$JEAN_SERVICE" 2>/dev/null || printf 'unknown')"
+        systemctl show "$JEAN_SERVICE" -p ExecStart --value 2>/dev/null || true
+    fi
+}
+
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+    show_versions
+    exit 0
+fi
+
+if [[ "$SKIP_CLIS" -eq 0 ]]; then
+    command -v volta >/dev/null 2>&1 || die "Volta is required for CLI updates"
+    log "Updating Codex via Volta ($CODEX_SPEC)"
+    volta install "$CODEX_SPEC"
+    log "Updating Command Code via Volta ($COMMAND_CODE_SPEC)"
+    volta install "$COMMAND_CODE_SPEC"
+fi
+
+if [[ "$SKIP_JEAN" -eq 0 ]]; then
+    command -v tar >/dev/null 2>&1 || die "tar is required for Jean updates"
+    command -v systemctl >/dev/null 2>&1 || warn "systemctl not found; Jean will be installed without service reconfiguration"
+
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64|amd64) jean_arch=amd64 ;;
+        aarch64|arm64) jean_arch=arm64 ;;
+        *) die "unsupported Jean architecture: $arch" ;;
+    esac
+
+    if [[ "$JEAN_VERSION" == latest ]]; then
+        log "Resolving latest Jean release"
+        latest_json="$(curl -fsSL \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'User-Agent: dotfiles-update-agent-tools' \
+            "https://api.github.com/repos/$JEAN_REPO/releases/latest")"
+        JEAN_VERSION="$(printf '%s' "$latest_json" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+        [[ -n "$JEAN_VERSION" ]] || die "could not determine the latest Jean release"
+    fi
+    JEAN_VERSION="${JEAN_VERSION#v}"
+
+    tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/update-agent-tools.XXXXXX")"
+    trap 'rm -rf "$tmp_dir"' EXIT
+    archive="jean-server-linux-${jean_arch}-${JEAN_VERSION}.tar.gz"
+    base_url="https://github.com/$JEAN_REPO/releases/download/v$JEAN_VERSION"
+
+    log "Downloading Jean v$JEAN_VERSION ($jean_arch)"
+    curl -fsSL -o "$tmp_dir/$archive" "$base_url/$archive"
+    curl -fsSL -o "$tmp_dir/$archive.sha256" "$base_url/$archive.sha256"
+
+    expected="$(awk '{print tolower($1); exit}' "$tmp_dir/$archive.sha256")"
+    actual="$(sha256sum "$tmp_dir/$archive" | awk '{print tolower($1)}')"
+    [[ -n "$expected" && "$expected" == "$actual" ]] || die "Jean checksum verification failed"
+    printf 'Jean checksum verified: %s\n' "$actual"
+
+    mkdir -p "$(dirname "$JEAN_USER_BIN")"
+    extract_dir="$tmp_dir/extracted"
+    mkdir -p "$extract_dir"
+    tar -xzf "$tmp_dir/$archive" -C "$extract_dir"
+    source_bin="$(find "$extract_dir" -type f -name 'jean-server*' -print -quit)"
+    [[ -n "$source_bin" ]] || die "Jean binary not found in release archive"
+
+    log "Installing Jean to the user-owned path"
+    staged_bin="$JEAN_USER_BIN.new.$$"
+    install -m 0755 "$source_bin" "$staged_bin"
+    mv -f "$staged_bin" "$JEAN_USER_BIN"
+
+    # Make direct invocations use the same user-owned binary too. Preserve the
+    # original root-owned file for rollback instead of deleting it.
+    if [[ -e "$JEAN_SYSTEM_BIN" && ! -L "$JEAN_SYSTEM_BIN" ]]; then
+        backup="$JEAN_SYSTEM_BIN.backup-$(date +%Y%m%d%H%M%S)"
+        log "Backing up root-owned Jean binary to $backup"
+        sudo mv "$JEAN_SYSTEM_BIN" "$backup"
+    fi
+    if [[ -L "$JEAN_SYSTEM_BIN" ]] && [[ "$(readlink "$JEAN_SYSTEM_BIN")" != "$JEAN_USER_BIN" ]]; then
+        sudo rm -f "$JEAN_SYSTEM_BIN"
+    fi
+    if [[ ! -e "$JEAN_SYSTEM_BIN" && ! -L "$JEAN_SYSTEM_BIN" ]]; then
+        sudo ln -s "$JEAN_USER_BIN" "$JEAN_SYSTEM_BIN"
+    fi
+
+    if command -v systemctl >/dev/null 2>&1 && (systemctl cat "$JEAN_SERVICE" >/dev/null 2>&1 || [[ -f "/etc/systemd/system/$JEAN_SERVICE" ]]); then
+        log "Pointing $JEAN_SERVICE at the user-owned binary"
+        sudo mkdir -p "/etc/systemd/system/$JEAN_SERVICE.d"
+        printf '%s\n' \
+            '[Service]' \
+            'ExecStart=' \
+            "ExecStart=$JEAN_USER_BIN --headless" \
+            | sudo tee "/etc/systemd/system/$JEAN_SERVICE.d/install-path.conf" >/dev/null
+        sudo systemctl daemon-reload
+        sudo systemctl restart "$JEAN_SERVICE"
+        systemctl is-active --quiet "$JEAN_SERVICE" || {
+            sudo journalctl -u "$JEAN_SERVICE" -n 40 --no-pager >&2 || true
+            die "$JEAN_SERVICE did not start"
+        }
+    else
+        warn "Jean systemd service not found; skipping service reconfiguration"
+    fi
+fi
+
+log "Update complete"
+show_versions
