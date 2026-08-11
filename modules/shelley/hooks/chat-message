@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# chat-message — record a user follow-up message into the trace.
+# stdin JSON: { message, readonly: { conversation_id, model, ... } }
+# stdout: { "message": "..." } (unchanged) — we only observe.
+set -euo pipefail
+# Resolve traces-lib.sh next to this hook (works through symlinks).
+_TRACES_HOOK_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")" && pwd)"
+source "$_TRACES_HOOK_DIR/traces-lib.sh"
+
+INPUT="$(cat)"
+
+# Echo the message back unchanged so Shelley proceeds normally.
+printf '%s' "$INPUT" | jq -c '{message: .message}'
+
+conv_id=$(printf '%s' "$INPUT" | jq -r '.readonly.conversation_id // empty')
+message=$(printf '%s' "$INPUT" | jq -r '.message // empty')
+[ -n "$conv_id" ] || exit 0
+[ -n "$message" ] || exit 0
+
+# A monotonic per-conversation message id derived from current time.
+mid="user-$(date +%s%N)"
+traces_guard traces_add_message "$conv_id" "$mid" "user" "$message"

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# new-conversation — create a Traces trace when a Shelley conversation starts.
+# stdin JSON: { prompt, model, cwd, readonly: { conversation_id, is_subagent, ... } }
+set -euo pipefail
+# Resolve traces-lib.sh next to this hook (works through symlinks).
+_TRACES_HOOK_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")" && pwd)"
+source "$_TRACES_HOOK_DIR/traces-lib.sh"
+
+INPUT="$(cat)"
+
+# Hand the original payload straight back to Shelley unchanged (we only read).
+printf '%s' "$INPUT"
+
+# Skip subagents — internal scratch conversations.
+is_sub=$(printf '%s' "$INPUT" | jq -r '.readonly.is_subagent // false')
+[ "$is_sub" = "true" ] && exit 0
+
+conv_id=$(printf '%s' "$INPUT" | jq -r '.readonly.conversation_id // empty')
+prompt=$(printf '%s' "$INPUT" | jq -r '.prompt // "(new conversation)"')
+[ -n "$conv_id" ] || exit 0
+
+# Title: first line of the opening prompt, trimmed.
+title=$(printf '%s' "$prompt" | head -1 | cut -c1-120)
+[ -n "$title" ] || title="Shelley session"
+
+traces_guard traces_upsert "$conv_id" "$title" private
+# Record the first user message too.
+traces_guard traces_add_message "$conv_id" "msg-0" "user" "$prompt"

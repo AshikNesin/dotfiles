@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# end-of-turn — record the agent's final response into the trace.
+# stdin JSON: { type, conversation_id, model, final_response, ... }
+# stdout ignored.
+set -euo pipefail
+# Resolve traces-lib.sh next to this hook (works through symlinks).
+_TRACES_HOOK_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")" && pwd)"
+source "$_TRACES_HOOK_DIR/traces-lib.sh"
+
+INPUT="$(cat)"
+
+conv_id=$(printf '%s' "$INPUT" | jq -r '.conversation_id // empty')
+resp=$(printf '%s' "$INPUT" | jq -r '.final_response // empty')
+[ -n "$conv_id" ] || exit 0
+[ -n "$resp" ] || exit 0
+
+mid="agent-$(date +%s%N)"
+traces_guard traces_add_message "$conv_id" "$mid" "assistant" "$resp"

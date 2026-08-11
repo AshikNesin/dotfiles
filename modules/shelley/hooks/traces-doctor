@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# traces-doctor — quick health check for the Shelley<->Traces bridge.
+set -euo pipefail
+# Resolve traces-lib.sh next to this hook (works through symlinks).
+_TRACES_HOOK_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")" && pwd)"
+source "$_TRACES_HOOK_DIR/traces-lib.sh"
+
+BASE="$TRACES_BASE"
+pass=0; fail=0
+ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; pass=$((pass+1)); }
+bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; fail=$((fail+1)); }
+info() { printf '  %s\n' "$1"; }
+
+echo "Shelley ↔ Traces bridge diagnostics"
+echo
+
+echo "Hooks present:"
+for f in new-conversation chat-message end-of-turn slash/traces traces-lib.sh; do
+  p="$HOME/.config/shelley/hooks/$f"
+  if [ -x "$p" ] || { [ -f "$p" ] && [ "$f" = "traces-lib.sh" ]; }; then
+    ok "$f"
+  else
+    bad "$f (missing or not executable)"
+  fi
+done
+echo
+
+echo "Edge proxy reachability ($BASE):"
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/v1/namespaces" 2>/dev/null || echo 000)
+if [ "$code" = "200" ]; then ok "edge proxy reachable (HTTP $code)"; else bad "edge proxy not reachable (HTTP $code)"; fi
+
+echo
+echo "Auth (edge-injected):"
+t="shelley-doctor-$(date +%s)"
+r=$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$BASE/v1/traces/$t" \
+  -H 'Content-Type: application/json' -d '{"title":"doctor probe","agent":"shelley","visibility":"private"}' 2>/dev/null || echo 000)
+if [ "$r" = "200" ]; then
+  ok "create trace authenticated (HTTP $r)"
+  curl -s -X DELETE "$BASE/v1/traces/$t" -o /dev/null || true
+else
+  bad "create trace failed (HTTP $r)"
+fi
+
+echo
+printf 'Result: %d ok, %d failed\n' "$pass" "$fail"
+[ "$fail" = 0 ]

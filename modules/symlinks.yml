@@ -28,6 +28,20 @@ links:
 
   - source: modules/vim/.vimrc
     target: ~/.vimrc
+
+  # Shelley agent hooks (includes the Traces bridge)
+  - source: modules/shelley/hooks/traces-lib.sh
+    target: ~/.config/shelley/hooks/traces-lib.sh
+  - source: modules/shelley/hooks/new-conversation
+    target: ~/.config/shelley/hooks/new-conversation
+  - source: modules/shelley/hooks/chat-message
+    target: ~/.config/shelley/hooks/chat-message
+  - source: modules/shelley/hooks/end-of-turn
+    target: ~/.config/shelley/hooks/end-of-turn
+  - source: modules/shelley/hooks/traces-doctor
+    target: ~/.config/shelley/hooks/traces-doctor
+  - source: modules/shelley/hooks/slash/traces
+    target: ~/.config/shelley/hooks/slash/traces
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config

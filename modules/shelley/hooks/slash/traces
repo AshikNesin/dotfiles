@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# /traces — share the current Shelley conversation to Traces.
+#   /traces            → share as private (default) and print the URL
+#   /traces public     → share as public
+#   /traces direct     → share as direct (link-only)
+#   /traces url        → just print the current URL without changing visibility
+# stdout replaces the user message in the Shelley conversation.
+set -euo pipefail
+# Resolve traces-lib.sh relative to the hooks dir (slash hooks live one level down).
+_TRACES_HOOK_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")/.." && pwd)"
+source "$_TRACES_HOOK_DIR/traces-lib.sh"
+
+conv_id="${SHELLEY_CONVERSATION_ID:-}"
+args="${SHELLEY_SLASH_ARGS:-}"
+
+if [ -z "$conv_id" ]; then
+  echo "(couldn't determine the current conversation id)"
+  exit 0
+fi
+
+case "$args" in
+  public)  vis=public ;;
+  direct)  vis=direct ;;
+  url)     vis="" ;;
+  "")      vis=private ;;
+  *)       vis=private ;;
+esac
+
+url="$(traces_share_url "$conv_id")"
+
+if [ -n "$vis" ]; then
+  if traces_guard traces_upsert "$conv_id" "" "$vis" 2>/dev/null; then
+    echo "Shared this session to Traces ($vis): $url"
+  else
+    echo "(failed to update visibility on Traces — check the trace at $url)"
+  fi
+else
+  echo "This session's Traces URL: $url"
+fi
