@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+"""
+vision — give any text-only LLM eyes (Command Code-style VISION side-call).
+https://commandcode.ai/docs/vision
+
+Sends an image to a vision-capable model and prints a text transcription.
+Meant to be called by coding agents (or you) as a cheap side-call, so the
+session model never has to change.
+
+Usage:
+  vision screenshot.png                       # full transcription
+  vision shot.png "what's the exact error?"   # ask a specific question
+  vision a.png b.png "compare these layouts"
+  vision https://example.com/chart.png
+  cat img.png | vision - "describe"
+  vision --json shot.png                      # agent-friendly output
+  vision --probe                              # test which models see images
+
+Config: ~/.config/vision/config.json  ({"model":..., "base_url":..., "api_key":...})
+Env:    VISION_MODEL, VISION_BASE_URL, VISION_API_KEY, VISION_TIMEOUT
+
+Backends (explicit VISION_BASE_URL wins; otherwise first that works):
+  1. https://llm.int.exe.xyz/v1             (exe.dev gateway, no key needed)
+  2. https://openrouter.int.exe.xyz/api/v1  (exe.dev OpenRouter proxy, no key)
+  3. https://openrouter.ai/api/v1           (needs VISION_API_KEY)
+
+Exit codes: 0 ok | 1 usage | 2 bad input | 3 upstream error
+"""
+
+import argparse
+import base64
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+DEFAULT_MODEL = "gpt-5.6-terra"
+
+# Curated vision-capable candidates on the exe.dev gateway. --probe verifies.
+CURATED_MODELS = [
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+    "gpt-4o",
+    "gpt-4o-mini",
+]
+
+FALLBACK_BASES = [
+    "https://llm.int.exe.xyz/v1",
+    "https://openrouter.int.exe.xyz/api/v1",
+    "https://openrouter.ai/api/v1",
+]
+
+DEFAULT_QUESTION = (
+    "Describe this image precisely and completely. Transcribe any visible text "
+    "EXACTLY as written (error messages, stack traces, code, UI labels, filenames), "
+    "then describe the layout, positions, and colors. If it is a screenshot of an "
+    "app or terminal, say what state it shows. Be factual; do not speculate beyond "
+    "what is visible."
+)
+
+VISION_SYSTEM = (
+    "You are a vision transcription service for a coding agent that cannot see "
+    "images. Answer the user's question about the image(s) with high fidelity. "
+    "Always transcribe text verbatim. Prefer specifics (exact strings, positions "
+    "like 'top-left', colors) over generalities. Never refuse to describe what is "
+    "visible, and never invent content that is not there."
+)
+
+MAGIC = [
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+    (b"RIFF", "image/webp"),  # RIFF....WEBP validated below
+    (b"<svg", "image/svg+xml"),
+    (b"BM", "image/bmp"),
+]
+
+
+def die(code, msg):
+    print(f"vision: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def sniff_mime(data, path=""):
+    """Detect image MIME from magic bytes, falling back to extension."""
+    for magic, mime in MAGIC:
+        if data.startswith(magic):
+            if magic == b"RIFF":
+                return "image/webp" if data[8:12] == b"WEBP" else None
+            if magic == b"<svg":
+                return "image/svg+xml"
+            return mime
+    ext = os.path.splitext(path)[1].lower().lstrip(".")
+    return {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "gif": "image/gif",
+        "webp": "image/webp",
+        "bmp": "image/bmp",
+    }.get(ext)
+
+
+def load_config():
+    path = os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        "vision",
+        "config.json",
+    )
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+        if isinstance(cfg, dict):
+            return cfg
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def resolve_settings(args):
+    cfg = load_config()
+    model = args.model or os.environ.get("VISION_MODEL") or cfg.get("model") or DEFAULT_MODEL
+    base = os.environ.get("VISION_BASE_URL") or cfg.get("base_url")
+    api_key = os.environ.get("VISION_API_KEY") or cfg.get("api_key") or ""
+    timeout = args.timeout or float(os.environ.get("VISION_TIMEOUT", 0) or 0) or cfg.get("timeout", 90)
+    return model, base, api_key, float(timeout)
+
+
+def fetch_image(source, timeout):
+    """Return (bytes, mime, display_path) for a path, URL, or '-' (stdin)."""
+    if source == "-":
+        data = sys.stdin.buffer.read()
+        mime = sniff_mime(data)
+        if not mime:
+            die(2, "stdin does not look like a supported image (png/jpg/gif/webp/bmp)")
+        return data, mime, "<stdin>"
+
+    if source.startswith(("http://", "https://")):
+        try:
+            req = urllib.request.Request(source, headers={"User-Agent": "vision-tool/1.0"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = r.read()
+                ctype = r.headers.get_content_type()
+        except Exception as e:
+            die(2, f"could not download {source}: {e}")
+        mime = ctype if ctype.startswith("image/") and ctype != "image/svg+xml" else sniff_mime(data, source)
+        if not mime:
+            die(2, f"{source} is not a recognizable image")
+        return data, mime, source
+
+    path = os.path.abspath(os.path.expanduser(source))
+    if not os.path.isfile(path):
+        die(2, f"no such file: {path}")
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+    except OSError as e:
+        die(2, f"cannot read {path}: {e}")
+    mime = sniff_mime(data, path)
+    if not mime:
+        die(2, f"{path} is not a supported image (png/jpg/gif/webp/bmp/svg)")
+
+    # Gateways reject SVG; rasterize via ImageMagick when available.
+    if mime == "image/svg+xml":
+        convert = shutil.which("magick") or shutil.which("convert")
+        if not convert:
+            die(2, f"{path} is SVG; install ImageMagick (convert) so it can be rasterized")
+        fd, out = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        try:
+            subprocess.run([convert, path, out], check=True, capture_output=True, timeout=30)
+            with open(out, "rb") as f:
+                data = f.read()
+            mime = "image/png"
+        except Exception as e:
+            die(2, f"SVG rasterization failed for {path}: {e}")
+        finally:
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
+    return data, mime, path
+
+
+def extract_answer(resp):
+    """Pull text out of either string or content-block content shapes."""
+    try:
+        msg = (resp.get("choices") or [{}])[0].get("message", {})
+    except (AttributeError, IndexError):
+        return ""
+    content = msg.get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(b.get("text", "") for b in content if isinstance(b, dict))
+    return ""
+
+
+def call_model(model, base, api_key, timeout, parts, question, max_attempts=2):
+    """POST /chat/completions. Returns (answer, usage, model, base_used)."""
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": VISION_SYSTEM},
+            {"role": "user", "content": parts + [{"type": "text", "text": question}]},
+        ],
+        "max_completion_tokens": 2048,
+    }
+    body = json.dumps(payload).encode()
+
+    bases = [base] if base else list(FALLBACK_BASES)
+    if not api_key:
+        bases = [b for b in bases if "openrouter.ai" not in b]
+
+    last_err = None
+    for b in bases:
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        url = b.rstrip("/") + "/chat/completions"
+        for attempt in range(1, max_attempts + 1):
+            try:
+                req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    resp = json.load(r)
+                answer = extract_answer(resp).strip()
+                if answer:
+                    return answer, resp.get("usage", {}), model, b
+                last_err = f"empty answer from {b} (model may not accept images): {json.dumps(resp)[:300]}"
+                break  # empty answer: try next base
+            except urllib.error.HTTPError as e:
+                detail = ""
+                try:
+                    detail = e.read().decode(errors="replace")[:400]
+                except Exception:
+                    pass
+                last_err = f"HTTP {e.code} from {b}: {detail}"
+                if e.code in (429, 500, 502, 503, 504) and attempt < max_attempts:
+                    time.sleep(1.5 * attempt)
+                    continue
+                break  # try next base
+            except urllib.error.URLError as e:
+                reason = getattr(e, "reason", e)
+                if isinstance(reason, OSError) and "timed out" in str(reason).lower():
+                    last_err = f"timeout after {timeout:.0f}s talking to {b}"
+                else:
+                    last_err = f"cannot reach {b}: {reason}"
+                break  # try next base
+            except Exception as e:
+                last_err = f"bad response from {b}: {e}"
+                break
+    die(3, last_err or "vision call failed")
+
+
+# 1x1 transparent PNG
+TINY_PNG = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
+
+
+def cmd_probe(args):
+    model, base, api_key, timeout = resolve_settings(args)
+    print(f"probing vision support with a tiny 1x1 png ({timeout:.0f}s timeout)...\n")
+    models = [args.model] if args.model else CURATED_MODELS
+    ok = []
+    for m in models:
+        parts = [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{TINY_PNG}"}}]
+        try:
+            _, _, _, used_base = call_model(m, base, api_key, min(timeout, 30), parts, "Reply with exactly: OK", max_attempts=1)
+            print(f"  \u2713 {m:<24} ({used_base})")
+            ok.append(m)
+        except SystemExit:
+            print(f"  \u2717 {m:<24} rejected / errored")
+    if ok:
+        print(f"\n{len(ok)} model(s) can see. pick one: VISION_MODEL=<name> or --model <name>")
+    else:
+        print("\nnone responded; check network or pass --model <gateway-model-id>")
+    sys.exit(0 if ok else 3)
+
+
+def cmd_list(_args):
+    print("curated vision-capable models (verify live with `vision --probe`):\n")
+    for m in CURATED_MODELS:
+        marker = "   (default)" if m == DEFAULT_MODEL else ""
+        print(f"  {m}{marker}")
+    print("\nany gateway/OpenRouter model id works with --model / VISION_MODEL.")
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        prog="vision",
+        description="Transcribe images to text via a vision-capable model (VISION side-call).",
+        epilog="question is optional; without it you get a full faithful transcription.",
+    )
+    ap.add_argument("images", nargs="*", help="image path(s), URL(s), or - for stdin")
+    ap.add_argument("question", nargs="*", help="what to ask about the image(s)")
+    ap.add_argument("-m", "--model", help=f"vision model (default: {DEFAULT_MODEL})")
+    ap.add_argument("-j", "--json", action="store_true", help="JSON output (for agents)")
+    ap.add_argument("--timeout", type=float, help="per-request timeout in seconds (default 90)")
+    ap.add_argument("--probe", action="store_true", help="test which models accept images")
+    ap.add_argument("--list", action="store_true", help="list curated models")
+    ap.add_argument("--version", action="store_true", help="print version")
+    args = ap.parse_args()
+
+    if args.version:
+        print("vision 1.0.0")
+        return
+    if args.list:
+        return cmd_list(args)
+    if args.probe:
+        return cmd_probe(args)
+    if not args.images:
+        ap.print_help()
+        sys.exit(1)
+
+    # Split free-form args: tokens that look like images (existing files,
+    # URLs, '-', or any path-like token with an image extension even if the
+    # file is missing) are images; everything else is the question. Keeps
+    # usage natural, and a bad path still fails loudly instead of silently
+    # becoming a "question".
+    IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
+    images, question_words = [], []
+    for tok in args.images + args.question:
+        looks_like_image = (
+            tok == "-"
+            or tok.startswith(("http://", "https://"))
+            or os.path.exists(os.path.expanduser(tok))
+            or (("/" in tok or tok.startswith("~/")) and tok.lower().endswith(IMAGE_EXTS))
+        )
+        if looks_like_image:
+            images.append(tok)
+        else:
+            question_words.append(tok)
+    question = " ".join(question_words).strip() or DEFAULT_QUESTION
+
+    model, base, api_key, timeout = resolve_settings(args)
+
+    parts, meta = [], []
+    for src in images:
+        data, mime, display = fetch_image(src, timeout)
+        b64 = base64.b64encode(data).decode()
+        parts.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})
+        meta.append({"source": display, "mime": mime, "bytes": len(data)})
+
+    t0 = time.time()
+    answer, usage, model_used, base_used = call_model(model, base, api_key, timeout, parts, question)
+    elapsed = time.time() - t0
+
+    if args.json:
+        print(json.dumps({
+            "tool": "vision",
+            "model": model_used,
+            "backend": base_used,
+            "question": question,
+            "images": meta,
+            "answer": answer,
+            "usage": usage,
+            "elapsed_s": round(elapsed, 2),
+        }, ensure_ascii=False, indent=2))
+    else:
+        print(answer)
+
+
+if __name__ == "__main__":
+    main()

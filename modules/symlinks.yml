@@ -29,7 +29,8 @@ links:
   - source: modules/vim/.vimrc
     target: ~/.vimrc
 
-  # Shelley agent hooks (includes the Traces bridge)
+  # Shelley agent hooks (Traces bridge + vision side-call tool;
+  # see modules/shelley/readme.md and README-traces-bridge.md)
   - source: modules/shelley/hooks/traces-lib.sh
     target: ~/.config/shelley/hooks/traces-lib.sh
   - source: modules/shelley/hooks/new-conversation
@@ -42,6 +43,10 @@ links:
     target: ~/.config/shelley/hooks/traces-doctor
   - source: modules/shelley/hooks/slash/traces
     target: ~/.config/shelley/hooks/slash/traces
+  - source: modules/shelley/hooks/system-prompt
+    target: ~/.config/shelley/hooks/system-prompt
+  - source: modules/shelley/hooks/slash/vision
+    target: ~/.config/shelley/hooks/slash/vision
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config

@@ -1,0 +1,41 @@
+#!/bin/bash
+# system-prompt hook: teach models about the `vision` CLI side-call.
+# Pattern borrowed from Command Code's VISION tool (commandcode.ai/docs/vision):
+# a text-only model side-calls a cheap vision-capable model to transcribe
+# images, instead of switching session models.
+#
+# stdin:  current system prompt
+# stdout: prompt + vision-tool appendix
+
+appendix='
+
+## VISION tool (image reading side-call)
+
+You have access to the `vision` CLI (on PATH). It sends an image to a
+vision-capable model and returns a text transcription. Use it whenever you
+need to see an image and cannot do so natively.
+
+How to call:
+  vision <image-path-or-url> ["question"]        # plain text answer
+  vision --json <image>                          # JSON: answer + usage
+  vision a.png b.png "compare these two"         # multiple images
+  vision --probe                                 # which models see images
+
+Rules (mirroring Command Code semantics):
+- Reading an image is YOUR decision, mid-turn, like reading a file. Nothing
+  is sent until you call it.
+- It is independent of the session model — it never changes which model
+  answers the prompt. Do not suggest switching models.
+- Ask for what is IN the image: "what is the exact error text" works;
+  "does this match what we changed" does not (the transcriber has no context).
+- The call is bounded by a timeout and FAILS OPEN: on failure, continue the
+  turn and report the stderr reason in one line, e.g.
+  "VISION failed (timeout after 90s) — continuing without it."
+- Prefer --json when you want machine-checkable output.
+
+When NOT to call it:
+- Pure text tasks, code reading, anything not requiring image content.
+- If the user asks "what is in this image" but gave no path/URL, ask for one
+  rather than guessing.'
+
+printf '%s\n%s\n' "$(cat)" "$appendix"
