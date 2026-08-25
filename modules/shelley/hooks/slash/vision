@@ -11,4 +11,15 @@ input=$(cat)
 args=$(printf '%s' "$input" | jq -r '.args // empty')
 [ -z "$args" ] && { echo "Usage: /vision <image path|URL> [question]"; exit 0; }
 
-printf '[VISION request]\n%s\n\nRun `vision %s` (add --json if you want structured output) and summarize the transcription for me. If the call fails, report the failure reason and continue.' "$args" "$args"
+# Locate vision: PATH first, then the dotfiles location (bash login shells
+# may not have ~/dotfiles/bin on PATH).
+if command -v vision >/dev/null 2>&1; then
+  cmd="vision"
+else
+  for c in "$HOME/dotfiles/bin/vision" /home/exedev/dotfiles/bin/vision; do
+    [ -x "$c" ] && cmd="$c" && break
+  done
+fi
+[ -z "${cmd:-}" ] && { echo "vision CLI not found — is ~/dotfiles/bin/vision installed?"; exit 0; }
+
+printf '[VISION request]\n%s\n\nRun `%s %s` (add --json if you want structured output) and summarize the transcription for me. If the call fails, report the failure reason and continue.' "$args" "$cmd" "$args"
