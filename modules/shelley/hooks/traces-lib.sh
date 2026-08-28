@@ -49,12 +49,22 @@ traces_upsert() {
     -H 'Content-Type: application/json' -d "$body" >/dev/null
 }
 
-# Append a single message. Args: conv_id external_msg_id role text [timestamp_ms]
-# Message schema: { externalId, role, textContent, timestamp? } — the API accepts
-# richer part shapes but only persists textContent (verified against the live
-# API by reading back natively-recorded traces; parts are dropped server-side).
-# Without an explicit timestamp the server stamps "now", so imported history
-# should pass one to keep ordering/Started accurate.
+# Append messages from a JSON array of API message objects (already in the
+# final schema: {externalId, role, textContent?, order?, timestamp?, parts?}).
+# Parts are typed: {type:"text"|"thinking"|"tool_call"|"tool_result"|"error"|"system_event",
+# content:{...}} — the shape Traces persists and renders (typed content objects;
+# no part-level externalId; messages need explicit order to render in order).
+traces_add_messages_json() {
+  [ "$TRACES_DISABLED" = "1" ] && return 0
+  local conv_id="$1" msgs_json="$2"
+  local ext; ext="$(traces_external_id "$conv_id")"
+  curl -sS -X POST "$TRACES_BASE/v1/traces/$ext/messages/batch" \
+    -H 'Content-Type: application/json' \
+    -d "{\"messages\":$msgs_json}" >/dev/null
+}
+
+# Append a single plain message. Args: conv_id external_msg_id role text [timestamp_ms]
+# Legacy helper for simple text events (user prompts, final responses).
 traces_add_message() {
   [ "$TRACES_DISABLED" = "1" ] && return 0
   local conv_id="$1" mid="$2" role="$3" text="$4" ts="${5:-}"
