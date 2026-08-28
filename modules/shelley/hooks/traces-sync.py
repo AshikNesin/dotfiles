@@ -158,6 +158,36 @@ def map_row(seq, mid, mtype, llm_data, created_at):
     return out
 
 
+def fetch_compactions(conv, db):
+    """Compaction boundaries: each generation >= 2 starts with an excluded
+    agent row 'Distilling conversation…' and a user row carrying the
+    distilled summary. Emit (boundary_seq, summary) pairs."""
+    marks = db.execute(
+        "SELECT MIN(sequence_id) FROM messages WHERE conversation_id=? "
+        "AND generation>1 AND excluded_from_context=1 AND type='agent' "
+        "GROUP BY generation ORDER BY MIN(sequence_id)",
+        (conv,)).fetchall()
+    out = []
+    for (seq,) in marks:
+        srow = db.execute(
+            "SELECT substr(llm_data,1,4000) FROM messages WHERE conversation_id=? "
+            "AND sequence_id>? AND type='user' AND excluded_from_context=0 "
+            "AND llm_data LIKE '%compacted into the following summary%' "
+            "ORDER BY sequence_id LIMIT 1", (conv, seq)).fetchone()
+        summary = ""
+        if srow and srow[0]:
+            try:
+                data = json.loads(srow[0])
+                for p in data.get("Content") or []:
+                    if p.get("Type") == 2 and p.get("Text"):
+                        summary = p["Text"][:1500]
+                        break
+            except Exception:
+                pass
+        out.append((seq, summary))
+    return out
+
+
 def fetch_rows(conv, after_seq=0):
     db = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=10)
     try:
@@ -169,9 +199,10 @@ def fetch_rows(conv, after_seq=0):
         meta = db.execute(
             "SELECT cwd, model, created_at FROM conversations WHERE conversation_id=?",
             (conv,)).fetchone()
+        compactions = fetch_compactions(conv, db)
     finally:
         db.close()
-    return rows, meta
+    return rows, meta, compactions
 
 
 def trace_meta_put(meta, title=None):
@@ -222,13 +253,13 @@ def main():
         # start so the opening prompt (recorded via traces_add_message by
         # new-conversation) isn't duplicated, and so a fresh conversation's
         # whole pre-history isn't pushed.
-        rows, _ = fetch_rows(conv, 0)
+        rows, _, _ = fetch_rows(conv, 0)
         if rows:
             os.makedirs(STATE_DIR, exist_ok=True)
             open(state_file, "w").write(str(rows[-1][0]))
         return
 
-    rows, meta = fetch_rows(conv, 0 if rebuild else last_seq)
+    rows, meta, compactions = fetch_rows(conv, 0 if rebuild else last_seq)
     if not rows and not rebuild:
         return  # nothing new
 
@@ -250,8 +281,26 @@ def main():
             title = flat[:70] + ("…" if len(flat) > 70 else "")
         api("PUT", f"/v1/traces/{ext}", trace_meta_put(meta, title))
     msgs = []
+    # Map compaction boundaries to system_event/compaction messages, injected
+    # at their boundary sequence. Content shape mirrors the official CLI:
+    # {subtype:"compaction", ...data}. Unknown-to-Traces fields ride in data.
+    comp_by_seq = {}
+    for seq, summary in compactions:
+        content = {"subtype": "compaction"}
+        if summary:
+            content["summary"] = summary
+        comp_by_seq[seq] = {"externalId": f"compact-{seq}", "role": "system",
+                            "order": seq * 32 - 1,
+                            "parts": [{"type": "system_event", "content": content}]}
+    # Boundary rows are excluded_from_context so they never appear in `rows`;
+    # inject each compaction just before the first row past its boundary.
+    pending = dict(comp_by_seq)
     for r in rows:
+        for seq in [s for s in pending if s < r[0]]:
+            msgs.append(pending.pop(seq))
         msgs.extend(map_row(*r))
+    for seq in sorted(pending):
+        msgs.append(pending[seq])
     if not rebuild:
         # First ever sync of a long-running conversation: assume history is
         # intentionally skipped rather than blocking the 30s hook budget.
