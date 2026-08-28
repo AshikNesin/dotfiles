@@ -37,15 +37,16 @@ traces_upsert() {
 }
 
 # Append a single message. Args: conv_id external_msg_id role text
-# Part schema: { type:"text", content:{ text: "..." } } (the server stores this; a
-# bare top-level `text` field is accepted on input but not persisted).
+# Message schema: { externalId, role, textContent } — the API accepts richer
+# part shapes but only persists textContent (verified against the live API by
+# reading back natively-recorded traces; parts are dropped server-side).
 traces_add_message() {
   [ "$TRACES_DISABLED" = "1" ] && return 0
   local conv_id="$1" mid="$2" role="$3" text="$4"
   local ext; ext="$(traces_external_id "$conv_id")"
   local body
   body=$(jq -nc --arg mid "$mid" --arg role "$role" --arg text "$text" '{
-    messages: [{ externalId: $mid, role: $role, parts: [{ type: "text", content: { text: $text } }] }]
+    messages: [{ externalId: $mid, role: $role, textContent: $text }]
   }')
   curl -sS -X POST "$TRACES_BASE/v1/traces/$ext/messages/batch" \
     -H 'Content-Type: application/json' -d "$body" >/dev/null
