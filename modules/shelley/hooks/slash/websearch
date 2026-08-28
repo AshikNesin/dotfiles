@@ -1,0 +1,25 @@
+#!/bin/bash
+# /websearch slash command for Shelley.
+# Usage:  /websearch <query> [--news|--papers|--json|...]
+#
+# Reads stdin JSON {command, args, raw_message, cwd, ...} and rewrites the
+# user message into a WEB_SEARCH-tool instruction, so the agent runs the
+# side-call and summarizes the results for you.
+set -euo pipefail
+
+input=$(cat)
+args=$(printf '%s' "$input" | jq -r '.args // empty')
+[ -z "$args" ] && { echo "Usage: /websearch <query> [--news|--papers|--recent N|--json|...]"; exit 0; }
+
+# Locate websearch: PATH first, then the dotfiles location (bash login shells
+# may not have ~/dotfiles/bin on PATH).
+if command -v websearch >/dev/null 2>&1; then
+  cmd="websearch"
+else
+  for c in "$HOME/dotfiles/bin/websearch" /home/exedev/dotfiles/bin/websearch; do
+    [ -x "$c" ] && cmd="$c" && break
+  done
+fi
+[ -z "${cmd:-}" ] && { echo "websearch CLI not found — is ~/dotfiles/bin/websearch installed?"; exit 0; }
+
+printf '[WEB_SEARCH request]\n%s\n\nRun `%s %s` and summarize the results for me (cite URLs). If the call fails, report the failure reason and continue.' "$args" "$cmd" "$args"

@@ -1,11 +1,16 @@
 #!/bin/bash
-# system-prompt hook: teach models about the `vision` CLI side-call.
-# Pattern borrowed from Command Code's VISION tool (commandcode.ai/docs/vision):
-# a text-only model side-calls a cheap vision-capable model to transcribe
-# images, instead of switching session models.
+# system-prompt hook: teach models about side-call CLIs installed in dotfiles.
+#
+# 1. `vision`  — image transcription via a vision-capable model
+#    (Command Code VISION pattern, commandcode.ai/docs/vision): a text-only
+#    model side-calls a cheap vision-capable model to describe images,
+#    instead of switching session models.
+# 2. `websearch` — live web search via the TinyFish Search API
+#    (docs.tinyfish.ai/search-api): structured results (titles, URLs,
+#    snippets) as grounding, without a web-capable session model.
 #
 # stdin:  current system prompt
-# stdout: prompt + vision-tool appendix
+# stdout: prompt + tool appendices
 
 appendix='
 
@@ -36,6 +41,45 @@ Rules (mirroring Command Code semantics):
 When NOT to call it:
 - Pure text tasks, code reading, anything not requiring image content.
 - If the user asks "what is in this image" but gave no path/URL, ask for one
-  rather than guessing.'
+  rather than guessing.
+
+## WEB_SEARCH tool (live web search side-call)
+
+You have access to the `websearch` CLI (on PATH). It searches the live web
+via the TinyFish Search API and returns structured results (titles, URLs,
+snippets, dates). Use it whenever you need facts that depend on what is true
+NOW: current versions/pricing, recent releases or news, library docs you
+are unsure about, anything past your training cutoff or beyond this repo.
+
+How to call:
+  websearch <query>                        # rendered results (default 8)
+  websearch <query> --json                 # raw payload (machine-readable)
+  websearch <query> --news                 # news w/ publisher+date
+  websearch <query> --papers               # academic papers
+  websearch <query> --recent 1440          # last 24h (minutes)
+  websearch <query> --after 2025-01-01     # date-window filters
+  websearch "query" --include github.com   # domain restrict/exclude
+  websearch "query" -l DE --lang de        # locale (default US/en)
+  websearch --status                       # key/diagnostics check
+
+Rules (same spirit as VISION):
+- Searching is YOUR decision, mid-turn, like reading a file. Nothing is
+  sent until you call it; queries leave the VM (privacy applies).
+- Independent of the session model; never suggest switching models.
+- Search is free on TinyFish (30 req/min). Still: one well-formed query beats
+  five spray-and-pray queries; add --purpose "<intent>" for terse keyword
+  queries to improve relevance.
+- Snippets are leads, not truth: corroborate across results or read the page
+  (curl the URL) before asserting a fact.
+- Cite result URLs in your final answer when results informed it.
+- FAILS OPEN: on error, report the stderr reason in one line and continue
+  without web grounding (e.g. "WEB_SEARCH failed (401: invalid key)").
+- `websearch --status` shows which backend answers. Keyless here via the
+  exe.dev edge proxy; elsewhere set TINYFISH_API_KEY — never ask the user to
+  paste a secret into chat.
+
+When NOT to call it:
+- Anything answerable from the local repo, this VM, or stable well-known
+  knowledge. Local-first: grep the codebase before querying the web.'
 
 printf '%s\n%s\n' "$(cat)" "$appendix"

@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""
+websearch — WEB_SEARCH side-call for any text-only LLM agent (the twin of the
+`vision` tool). https://docs.tinyfish.ai/search-api
+
+Searches the live web via the TinyFish Search API and prints results an agent
+can use as grounding: titles, URLs, snippets. Meant to be called by coding
+agents (or you) as a cheap side-call, so the session model never needs a
+web-capable or search-tool model.
+
+Usage:
+  websearch "query"                         # top results, human-readable
+  websearch "query" --news                   # domain_type=news
+  websearch "query" --papers                 # domain_type=research_paper
+  websearch "query" --json                   # raw JSON payload (agents)
+  websearch "query" -n 5                     # limit rendered results
+  websearch "query" --max-results 5 --json   # same, in JSON mode
+  websearch "query" --recent 1440            # last 24h (minutes)
+  websearch "query" --after 2025-01-01 --before 2025-12-31
+  websearch "query" -l DE -lang de           # location + language
+  websearch "query" --include github.com,arxiv.org
+  websearch "query" --exclude pinterest.com,quora.com
+  websearch "query" --page 2                 # pagination (0-based)
+  websearch "query" --purpose "why you're searching"  # better relevance
+  websearch --status                          # auth/wallet/key diagnostics
+
+Config: ~/.config/websearch/config.json ({"api_key":..., "base_url":..., "timeout":...})
+Env:    TINYFISH_API_KEY, WEBSEARCH_BASE_URL, WEBSEARCH_TIMEOUT
+
+Backends (explicit --base-url / WEBSEARCH_BASE_URL wins; otherwise in order):
+  1. https://tinyfish.int.exe.xyz     (exe.dev edge proxy, keyless)
+  2. https://api.search.tinyfish.ai  (direct; needs TINYFISH_API_KEY)
+
+Exit codes: 0 ok | 1 usage | 2 bad input | 3 upstream error
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+VERSION = "1.1.0"
+
+PROXY_BASE = "https://tinyfish.int.exe.xyz"      # exe.dev edge proxy (keyless)
+DIRECT_BASE = "https://api.search.tinyfish.ai"   # direct API (needs key)
+API_KEYS_URL = "https://agent.tinyfish.ai/api-keys"
+DEFAULT_TIMEOUT = 30.0
+DEFAULT_MAX_RESULTS = 8          # rendered list default
+HARD_MAX_RESULTS = 20           # per API docs (total_results max)
+
+
+def die(code, msg):
+    print(f"websearch: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def load_config():
+    path = os.path.join(
+        os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+        "websearch",
+        "config.json",
+    )
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+        if isinstance(cfg, dict):
+            return cfg
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def resolve_api_key(args):
+    """CLI/env/config, in that order."""
+    return (
+        getattr(args, "api_key", None)
+        or os.environ.get("TINYFISH_API_KEY")
+        or os.environ.get("WEBSEARCH_API_KEY")
+        or load_config().get("api_key")
+        or ""
+    )
+
+
+def resolve_base(args):
+    return (
+        getattr(args, "base_url", None)
+        or os.environ.get("WEBSEARCH_BASE_URL")
+        or load_config().get("base_url")
+        or ""
+    )
+
+
+def resolve_candidates(args):
+    """Ordered (base_url, api_key) pairs to try, vision-style.
+
+    Explicit base wins and is used alone. Otherwise: keyless exe.dev edge
+    proxy first, then the direct API (with key, if one is configured).
+    """
+    explicit = resolve_base(args)
+    key = resolve_api_key(args)
+    if explicit:
+        return [(explicit, key)]
+    return [(PROXY_BASE, ""), (DIRECT_BASE, key)]
+
+
+def resolve_timeout(args):
+    t = (
+        getattr(args, "timeout", None)
+        or float(os.environ.get("WEBSEARCH_TIMEOUT", 0) or 0)
+        or load_config().get("timeout")
+        or DEFAULT_TIMEOUT
+    )
+    return float(t)
+
+
+def parse_date(s):
+    """Validate YYYY-MM-DD; return unchanged."""
+    try:
+        time.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        die(2, f"invalid date '{s}' — use YYYY-MM-DD")
+    return s
+
+
+def build_params(args):
+    """Map argparse namespace onto the TinyFish Search API query string."""
+    p = {"query": args.query}
+    if args.purpose:
+        p["purpose"] = args.purpose[:2000]
+    if args.location:
+        p["location"] = args.location.upper()
+    if args.language:
+        p["language"] = args.language.lower()
+    if args.include_domains:
+        p["include_domains"] = ",".join(d.strip().lower() for d in args.include_domains.split(",") if d.strip())
+    if args.exclude_domains:
+        p["exclude_domains"] = ",".join(d.strip().lower() for d in args.exclude_domains.split(",") if d.strip())
+    if args.domain_type == "news":
+        p["domain_type"] = "news"
+    elif args.domain_type == "papers":
+        p["domain_type"] = "research_paper"
+    if args.recency_minutes is not None:
+        v = int(args.recency_minutes)
+        if not (1 <= v <= 5256000):
+            die(2, "--recent must be 1..5256000 minutes")
+        p["recency_minutes"] = v
+    if args.after:
+        if args.domain_type == "papers":
+            die(2, "--after/--before are not supported for --papers; use --pub-year-min/max")
+        if args.recency_minutes is not None:
+            die(2, "--recent cannot be combined with --after/--before")
+        p["after_date"] = parse_date(args.after)
+    if args.before:
+        if args.domain_type == "papers":
+            die(2, "--after/--before are not supported for --papers; use --pub-year-min/max")
+        p["before_date"] = parse_date(args.before)
+    if args.domain_type == "papers":
+        if args.pub_year_min is not None:
+            p["pub_year_min"] = args.pub_year_min
+        if args.pub_year_max is not None:
+            p["pub_year_max"] = args.pub_year_max
+    if args.page > 10:
+        die(2, "--page max is 10")
+    if args.page:
+        p["page"] = args.page
+    return p
+
+
+def search(params, candidates, timeout, max_attempts=2):
+    """GET the Search API across candidate (base, key) pairs. Returns
+    (parsed_json, base_used)."""
+    qs = urllib.parse.urlencode(params)
+    last_err = None
+    for base, api_key in candidates:
+        url = f"{base.rstrip('/')}/?{qs}"
+        for attempt in range(1, max_attempts + 1):
+            try:
+                headers = {"Accept": "application/json"}
+                if api_key:
+                    headers["X-API-Key"] = api_key
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return json.load(r), base
+            except urllib.error.HTTPError as e:
+                detail = ""
+                try:
+                    detail = e.read().decode(errors="replace")[:300]
+                except Exception:
+                    pass
+                last_err = f"HTTP {e.code} from {base}: {detail}"
+                if e.code == 401 and not api_key:
+                    last_err += f"  (no key configured; get one at {API_KEYS_URL})"
+                if e.code in (429, 500, 502, 503) and attempt < max_attempts:
+                    time.sleep(1.5 * attempt)
+                    continue
+                break  # try next candidate
+            except urllib.error.URLError as e:
+                reason = getattr(e, "reason", e)
+                if isinstance(reason, OSError) and "timed out" in str(reason).lower():
+                    last_err = f"timeout after {timeout:.0f}s talking to {base}"
+                else:
+                    last_err = f"cannot reach {base}: {reason}"
+                break  # try next candidate
+            except Exception as e:
+                last_err = f"bad response from {base}: {e}"
+                break
+    die(3, last_err or "search failed")
+
+
+def render_text(payload):
+    """Human/agent-readable block: headers + numbered results + provenance footer."""
+    out = []
+    results = payload.get("results") or []
+    total = payload.get("total_results", len(results))
+    page = payload.get("page", 0)
+    if not results:
+        return f"no results for {payload.get('query', '')!r}"
+    for r in results:
+        line = f"[{r.get('position')}] {r.get('title', '')}"
+        extras = []
+        if r.get("date"):
+            extras.append(str(r["date"]))
+        if r.get("publisher"):
+            extras.append(str(r["publisher"]))
+        if r.get("cited_by_count") is not None:
+            extras.append(f"cited by {r['cited_by_count']}")
+        if r.get("authors"):
+            extras.append("; ".join(r["authors"]))
+        if extras:
+            line += "  (" + " · ".join(extras) + ")"
+        out.append(line)
+        out.append(f"    {r.get('site_name', '')} — {r.get('url', '')}")
+        snip = (r.get("snippet") or "").strip()
+        if snip:
+            out.append(f"    {snip}")
+        out.append("")
+    out.append(
+        f"— websearch · tinyfish search · {total} results · page {page} · "
+        f"use --page {page + 1} for more, --json for raw payload"
+    )
+    return "\n".join(out)
+
+
+def cmd_status(args):
+    """Diagnostics: show candidates and which backend answers."""
+    candidates = resolve_candidates(args)
+    explicit = bool(resolve_base(args))
+    api_key = resolve_api_key(args)
+    print("backends (tried in order):")
+    if explicit:
+        print(f"  * {candidates[0][0]}  (explicit override)")
+    else:
+        print(f"  1. {PROXY_BASE}  (exe.dev edge proxy, keyless)")
+        print(f"  2. {DIRECT_BASE}  (direct; {'key set' if api_key else 'no key — see ' + API_KEYS_URL})")
+    ok = False
+    for base, key in candidates:
+        try:
+            resp, _ = search({"query": "tinyfish"}, [(base, key)], resolve_timeout(args), max_attempts=1)
+            n = resp.get("total_results", "?")
+            print(f"\nsearch: ok via {base} — {n} results for test query")
+            print("search is free on tinyfish (30 req/min rate limit)")
+            ok = True
+            break
+        except SystemExit as e:
+            msg = str(getattr(e, "code", ""))
+            print(f"\nsearch: FAILED via {base}")
+            if not ok and base == candidates[-1][0]:
+                # surface the last error on stderr for visibility
+                pass
+    sys.exit(0 if ok else 3)
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        prog="websearch",
+        description="WEB_SEARCH side-call: web search via TinyFish, structured results for agents.",
+        epilog="keyless via the exe.dev edge proxy (tinyfish.int.exe.xyz); falls back to the\ndirect API with TINYFISH_API_KEY. keys: https://agent.tinyfish.ai/api-keys",
+    )
+    ap.add_argument("query", nargs="*", help="the search query (quoted if multi-word)")
+    ap.add_argument("--news", dest="domain_type", action="store_const", const="news", help="search news (adds publisher/date)")
+    ap.add_argument("--papers", dest="domain_type", action="store_const", const="papers", help="search academic papers (research_paper)")
+    ap.add_argument("-n", "--max-results", type=int, default=DEFAULT_MAX_RESULTS, help=f"results to render (default {DEFAULT_MAX_RESULTS}, max {HARD_MAX_RESULTS})")
+    ap.add_argument("-j", "--json", action="store_true", help="print raw JSON payload (for agents)")
+    ap.add_argument("-l", "--location", help="country code, e.g. US GB DE (default US)")
+    ap.add_argument("--lang", dest="language", help="language code, e.g. en de ja (default en)")
+    ap.add_argument("--include", dest="include_domains", help="comma-separated domains to restrict to")
+    ap.add_argument("--exclude", dest="exclude_domains", help="comma-separated domains to exclude")
+    ap.add_argument("--recent", dest="recency_minutes", type=int, help="freshness window in minutes (e.g. 1440 = 24h)")
+    ap.add_argument("--after", help="only results after this date (YYYY-MM-DD)")
+    ap.add_argument("--before", help="only results before this date (YYYY-MM-DD)")
+    ap.add_argument("--pub-year-min", type=int, help="min publication year (papers only)")
+    ap.add_argument("--pub-year-max", type=int, help="max publication year (papers only)")
+    ap.add_argument("--page", type=int, default=0, help="result page, 0-based (max 10)")
+    ap.add_argument("--purpose", help="why you're searching (<=2000 chars; improves relevance)")
+    ap.add_argument("--api-key", help="TinyFish API key (else TINYFISH_API_KEY or config)")
+    ap.add_argument("--base-url", help="API base URL override (e.g. edge proxy)")
+    ap.add_argument("--timeout", type=float, help=f"per-request timeout in seconds (default {DEFAULT_TIMEOUT:.0f})")
+    ap.add_argument("--status", action="store_true", help="diagnostics: which backend answers")
+    ap.add_argument("--version", action="store_true", help="print version")
+    args = ap.parse_args()
+
+    if args.version:
+        print(f"websearch {VERSION}")
+        return
+    if args.status:
+        return cmd_status(args)
+    if not args.query:
+        ap.print_help()
+        sys.exit(1)
+    args.query = " ".join(args.query)
+    if not (1 <= args.max_results <= HARD_MAX_RESULTS):
+        die(2, f"--max-results must be 1..{HARD_MAX_RESULTS}")
+
+    params = build_params(args)
+    resp, base_used = search(params, resolve_candidates(args), resolve_timeout(args))
+
+    if args.json:
+        print(json.dumps(resp, ensure_ascii=False, indent=2))
+    else:
+        results = resp.get("results") or []
+        if len(results) > args.max_results:
+            resp["results"] = results[: args.max_results]
+        text = render_text(resp)
+        # one-line provenance so agents know which backend answered
+        print(text.replace("— websearch · tinyfish search ·", f"— websearch · {base_used} ·"))
+
+
+if __name__ == "__main__":
+    main()

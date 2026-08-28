@@ -24,8 +24,10 @@ link chat-message
 link end-of-turn
 link traces-doctor
 link slash/traces
+link slash/vision
+link slash/websearch
 
 echo
 echo "Shelley hooks installed to $DEST"
 echo "Verify:  bash $DEST/traces-doctor"
-echo "Share:   /traces  (in a Shelley conversation)"
+echo "Tools:   /traces  /vision  /websearch  (in a Shelley conversation)"

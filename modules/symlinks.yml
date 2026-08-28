@@ -47,6 +47,8 @@ links:
     target: ~/.config/shelley/hooks/system-prompt
   - source: modules/shelley/hooks/slash/vision
     target: ~/.config/shelley/hooks/slash/vision
+  - source: modules/shelley/hooks/slash/websearch
+    target: ~/.config/shelley/hooks/slash/websearch
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config
