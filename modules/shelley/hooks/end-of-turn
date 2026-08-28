@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# end-of-turn — record the agent's final response into the trace.
+# end-of-turn — sync every interaction of the turn to Traces.
 # stdin JSON: { type, conversation_id, model, final_response, ... }
 # stdout ignored.
+#
+# Runs traces-sync.py incrementally: pushes new DB rows (user text, agent
+# text, thinking, tool calls + results) since the last synced sequence.
+# State: ~/.cache/shelley-traces/<conv>.state
 set -euo pipefail
 # Resolve traces-lib.sh next to this hook (works through symlinks).
 _TRACES_HOOK_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")" && pwd)"
@@ -10,13 +14,12 @@ source "$_TRACES_HOOK_DIR/traces-lib.sh"
 INPUT="$(cat)"
 
 conv_id=$(printf '%s' "$INPUT" | jq -r '.conversation_id // empty')
-resp=$(printf '%s' "$INPUT" | jq -r '.final_response // empty')
-model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
 [ -n "$conv_id" ] || exit 0
-[ -n "$resp" ] || exit 0
 
-# Keep model metadata fresh (conversation may have switched models mid-flight).
+# Refresh model metadata (conversation may have switched models mid-flight).
+model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
 [ -n "$model" ] && traces_guard traces_upsert "$conv_id" "" "" "model=$model"
 
-mid="agent-$(date +%s%N)"
-traces_guard traces_add_message "$conv_id" "$mid" "assistant" "$resp"
+# Full typed sync of everything that happened this turn (and anything the
+# earlier hooks could not see: thinking, tool calls, tool results).
+traces_guard python3 "$_TRACES_HOOK_DIR/traces-sync.py" "$conv_id"

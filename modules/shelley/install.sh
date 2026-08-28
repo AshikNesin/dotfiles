@@ -19,6 +19,7 @@ link() {
 }
 
 link traces-lib.sh
+link traces-sync.py
 link new-conversation
 link chat-message
 link end-of-turn

@@ -49,6 +49,8 @@ links:
     target: ~/.config/shelley/hooks/slash/vision
   - source: modules/shelley/hooks/slash/websearch
     target: ~/.config/shelley/hooks/slash/websearch
+  - source: modules/shelley/hooks/traces-sync.py
+    target: ~/.config/shelley/hooks/traces-sync.py
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config

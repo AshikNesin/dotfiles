@@ -34,5 +34,6 @@ if [ -n "$cwd" ]; then
 fi
 
 traces_guard traces_upsert "$conv_id" "$title" private "${meta[@]:-}"
-# Record the first user message too.
-traces_guard traces_add_message "$conv_id" "msg-0" "user" "$prompt"
+# Seed sync state so end-of-turn's incremental sync doesn't backfill the
+# opening prompt twice (it is part of the same DB row we already would sync).
+traces_guard python3 "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")/traces-sync.py" --init-only "$conv_id"
