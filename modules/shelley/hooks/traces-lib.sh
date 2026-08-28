@@ -23,6 +23,20 @@ traces_external_id() {
   printf 'shelley-%s' "$1"
 }
 
+# exe.dev gateway internal model ids -> canonical ids Traces can label
+# (unknown ids render title-cased). Keep in sync with traces-sync.py.
+traces_normalize_model() {
+  case "$1" in
+    glm-5-2-zai-int-exe-xyz|glm-5.2-fireworks) printf 'glm-5.2' ;;
+    glm-5-3-zai-int-exe-xyz|glm-5.3-fireworks) printf 'glm-5.3' ;;
+    deepseek-v4-flash-fireworks) printf 'deepseek-v4-flash' ;;
+    deepseek-v4-pro-fireworks)   printf 'deepseek-v4-pro' ;;
+    kimi-k3-fireworks)           printf 'kimi-k3' ;;
+    *-zai-int-exe-xyz|*-int-exe-xyz|*-fireworks) printf '%s' "${1%-zai-int-exe-xyz}" | sed 's/-int-exe-xyz$//;s/-fireworks$//' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 # Create or update a trace. Args: conv_id title [visibility] [key=value ...]
 # Extra keys map straight onto the trace: model=, agent_id=, project_name=,
 # project_path=, git_remote_url=, source_created_at= (ms epoch).
@@ -37,7 +51,7 @@ traces_upsert() {
   for kv in "$@"; do
     k="${kv%%=*}"; v="${kv#*=}"
     case "$k" in
-      model)             body=$(printf '%s' "$body" | jq -c --arg v "$v" '. + {model:$v}');;
+      model)             body=$(printf '%s' "$body" | jq -c --arg v "$(traces_normalize_model "$v")" '. + {model:$v}');;
       agent_id)          body=$(printf '%s' "$body" | jq -c --arg v "$v" '. + {agentId:$v}');;
       project_name)      body=$(printf '%s' "$body" | jq -c --arg v "$v" '. + {projectName:$v}');;
       project_path)      body=$(printf '%s' "$body" | jq -c --arg v "$v" '. + {projectPath:$v}');;

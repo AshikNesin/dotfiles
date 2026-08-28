@@ -36,6 +36,29 @@ STATE_DIR = os.environ.get("TRACES_STATE_DIR",
 CHUNK = 25
 FIRST_RUN_LIMIT = 400  # un-synced rows beyond this on first run: skip to now
 
+# exe.dev gateway internal model ids -> canonical public ids Traces can label.
+# Traces pretty-prints canonical ids (vendor + name); unknown ids get
+# title-cased ("Glm 5.2 Zai Int Exe Xyz"), so normalize before sending.
+MODEL_ALIASES = {
+    "glm-5-2-zai-int-exe-xyz": "glm-5.2",
+    "glm-5-3-zai-int-exe-xyz": "glm-5.3",
+    "glm-5.2-fireworks": "glm-5.2",
+    "deepseek-v4-flash-fireworks": "deepseek-v4-flash",
+    "deepseek-v4-pro-fireworks": "deepseek-v4-pro",
+    "kimi-k3-fireworks": "kimi-k3",
+}
+
+def normalize_model(model):
+    if not model:
+        return model
+    if model in MODEL_ALIASES:
+        return MODEL_ALIASES[model]
+    # generic: strip exe.dev/gateway suffixes from future ids
+    for suffix in ("-zai-int-exe-xyz", "-int-exe-xyz", "-fireworks"):
+        if model.endswith(suffix):
+            return model[: -len(suffix)]
+    return model
+
 
 def die(msg):
     print(f"traces-sync: {msg}", file=sys.stderr)
@@ -158,7 +181,7 @@ def trace_meta_put(meta, title=None):
     if meta:
         cwd, model, created_at = meta
         if model:
-            put["model"] = model
+            put["model"] = normalize_model(model)
         if cwd:
             put["projectPath"] = cwd
             put["projectName"] = cwd.rstrip("/").split("/")[-1]
