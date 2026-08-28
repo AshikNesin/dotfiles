@@ -11,8 +11,12 @@ INPUT="$(cat)"
 
 conv_id=$(printf '%s' "$INPUT" | jq -r '.conversation_id // empty')
 resp=$(printf '%s' "$INPUT" | jq -r '.final_response // empty')
+model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
 [ -n "$conv_id" ] || exit 0
 [ -n "$resp" ] || exit 0
+
+# Keep model metadata fresh (conversation may have switched models mid-flight).
+[ -n "$model" ] && traces_guard traces_upsert "$conv_id" "" "" "model=$model"
 
 mid="agent-$(date +%s%N)"
 traces_guard traces_add_message "$conv_id" "$mid" "assistant" "$resp"

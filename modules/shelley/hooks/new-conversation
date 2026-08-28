@@ -23,6 +23,16 @@ prompt=$(printf '%s' "$INPUT" | jq -r '.prompt // "(new conversation)"')
 title=$(printf '%s' "$prompt" | head -1 | cut -c1-120)
 [ -n "$title" ] || title="Shelley session"
 
-traces_guard traces_upsert "$conv_id" "$title" private
+model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
+cwd=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
+
+meta=()
+[ -n "$model" ] && meta+=("model=$model")
+if [ -n "$cwd" ]; then
+  meta+=("project_path=$cwd" "project_name=$(basename "$cwd")")
+  remote=$(git -C "$cwd" remote get-url origin 2>/dev/null) && meta+=("git_remote_url=$remote")
+fi
+
+traces_guard traces_upsert "$conv_id" "$title" private "${meta[@]:-}"
 # Record the first user message too.
 traces_guard traces_add_message "$conv_id" "msg-0" "user" "$prompt"
