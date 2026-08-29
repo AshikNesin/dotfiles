@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# disk-cleanup — hourly janitor for rebuildable caches & stale temp files.
+# Safe by design: never touches active projects, toolchains, android-sdk,
+# AVDs, or anything modified recently / currently in use.
+#
+# Scheduled via cron (hourly). Cron starts with a minimal PATH, so export
+# everything the guards below rely on.
+set -u
+export PATH="$HOME/.local/bin:$HOME/.volta/bin:$HOME/dotfiles/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+LOG="$HOME/.local/state/disk-cleanup.log"
+mkdir -p "$HOME/.local/state"
+
+# Keep the log from growing forever
+if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG" 2>/dev/null || echo 0)" -gt 5242880 ]; then
+  : > "$LOG"
+fi
+
+log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
+freed_before=$(df --output=used -B1 / | tail -1)
+
+# ---------------------------------------------------------------- /tmp -----
+# Delete entries older than 48h, skipping system dirs and anything a running
+# process still holds.
+for entry in /tmp/*; do
+  [ -e "$entry" ] || continue
+  case "$(basename "$entry")" in
+    systemd-*|snap-private-tmp|.X11-unix|.ICE-unix|.font-unix|.XIM-unix|.Test-unix|hsperfdata_*) continue ;;
+  esac
+  # -mtime +0 => older than 24h; use +1 => >48h window
+  if [ -z "$(find "$entry" -maxdepth 0 -mtime +1 2>/dev/null)" ]; then
+    continue
+  fi
+  # Skip if any process still has it open (user procs even without sudo)
+  if fuser -s "$entry" 2>/dev/null || sudo -n fuser -s "$entry" 2>/dev/null; then
+    continue
+  fi
+  rm -rf -- "$entry" 2>/dev/null
+done
+
+# ------------------------------------------------------- language caches ---
+# Go build cache: entries not touched in 7 days (content-addressed, safe to drop)
+if [ -d "$HOME/.cache/go-build" ]; then
+  find "$HOME/.cache/go-build" -type f -mtime +7 -delete 2>/dev/null
+  find "$HOME/.cache/go-build" -mindepth 1 -type d -empty -delete 2>/dev/null
+fi
+
+# npm cache: entries older than 14 days
+if [ -d "$HOME/.npm/_cacache" ]; then
+  find "$HOME/.npm/_cacache" -type f -mtime +14 -delete 2>/dev/null
+  find "$HOME/.npm/_cacache" -mindepth 1 -type d -empty -delete 2>/dev/null
+fi
+
+# pnpm store: prune unreferenced packages weekly (marker-file throttle)
+PNPM_MARKER="$HOME/.local/state/.last-pnpm-prune"
+if ! [ -f "$PNPM_MARKER" ] || [ -z "$(find "$PNPM_MARKER" -mtime +7 2>/dev/null)" ]; then
+  command -v pnpm >/dev/null && pnpm store prune >/dev/null 2>&1
+  touch "$PNPM_MARKER"
+fi
+
+# Rust build dirs (target/) under ~/Code not modified in 7 days.
+# Prune node_modules/.git during traversal so hourly runs stay fast.
+find "$HOME/Code" -maxdepth 5 \( -name node_modules -o -name .git \) -prune -o \
+  -type d -name target -mtime +7 -print0 2>/dev/null |
+  while IFS= read -r -d '' t; do rm -rf -- "$t"; done
+
+# ------------------------------------------------------- node_modules ------
+# Remove node_modules from projects not touched in 30 days. -prune makes
+# find skip their contents (never descends into nested ones — they belong
+# to their parent's tree). Reinstall anytime: pnpm/npm/yarn install.
+find "$HOME/Code" -type d -name node_modules -prune -print0 2>/dev/null |
+  while IFS= read -r -d '' nm; do
+    parent="$(dirname "$nm")"
+    # Only real install roots: a package.json must sit beside node_modules
+    # (skips CMake-style artifacts that merely embed the name in their path)
+    [ -f "$parent/package.json" ] || continue
+    # "Touched" = any file OUTSIDE node_modules modified in the window:
+    # source edits, installs, builds, git operations all count.
+    if [ -z "$(find "$parent" -path "$nm" -prune -o -type f -mtime -30 -print -quit 2>/dev/null)" ]; then
+      rm -rf -- "$nm"
+      log "removed stale node_modules: $nm"
+    fi
+  done
+
+# ------------------------------------------------------- app/tool caches ---
+# Claude Code: keep only the 2 newest versions
+CLAUDE_VERS="$HOME/.local/share/claude/versions"
+if [ -d "$CLAUDE_VERS" ]; then
+  ls -1t "$CLAUDE_VERS" 2>/dev/null | tail -n +3 |
+    while IFS= read -r v; do rm -f -- "$CLAUDE_VERS/$v"; done
+fi
+
+# Docker: dangling images only (safe; no -a)
+if command -v docker >/dev/null; then
+  if sudo -n docker info >/dev/null 2>&1; then
+    sudo -n docker image prune -f >/dev/null 2>&1
+  fi
+fi
+
+# journald: cap at 100M
+sudo -n journalctl --vacuum-size=100M >/dev/null 2>&1
+
+# ------------------------------------------------------------ summary -----
+freed_after=$(df --output=used -B1 / | tail -1)
+freed_mb=$(( (freed_before - freed_after) / 1048576 ))
+pct=$(df --output=pcent / | tail -1 | tr -d ' %')
+log "run done: freed ${freed_mb}MB this run; root at ${pct}%"
+
+# Loud warning if disk fills up despite cleanup
+if [ "$pct" -ge 85 ]; then
+  log "WARNING: disk usage >= 85%. Manual review needed:"
+  log "$(du -xh --max-depth=1 "$HOME" 2>/dev/null | sort -rh | head -10)"
+fi
