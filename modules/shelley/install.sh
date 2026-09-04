@@ -27,8 +27,9 @@ link traces-doctor
 link slash/traces
 link slash/vision
 link slash/websearch
+link slash/taste
 
 echo
 echo "Shelley hooks installed to $DEST"
 echo "Verify:  bash $DEST/traces-doctor"
-echo "Tools:   /traces  /vision  /websearch  (in a Shelley conversation)"
+echo "Tools:   /traces  /vision  /websearch  /taste  (in a Shelley conversation)"

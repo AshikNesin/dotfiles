@@ -82,4 +82,30 @@ When NOT to call it:
 - Anything answerable from the local repo, this VM, or stable well-known
   knowledge. Local-first: grep the codebase before querying the web.'
 
+# TASTE injection (Command Code-style learned preferences; see `taste` CLI).
+# Locate this session's working directory from the prompt itself:
+#   main prompt      -> "Initial pwd: <dir>."
+#   subagent prompt  -> "Working directory: <dir>"
+# Then render the user's taste profile for that project. Fail-open: on any
+# error we still print the original prompt + prior appendix unchanged.
+taste_render=""
+# First token of the pwd line, minus trailing punctuation. The main prompt's
+# "Initial pwd: <dir>. Use the change_dir tool ..." is a full sentence, so we
+# cannot take the whole line; the subagent's "Working directory: <dir>" is bare.
+_dir=$(sed -nE 's/^(Initial pwd|Working directory): ([^ ,]+).*/\2/p' | head -1)
+_dir="${_dir%%.*}"; _dir="${_dir%,}"
+if [ -n "$_dir" ] && [ -d "$_dir" ]; then
+  if command -v taste >/dev/null 2>&1; then
+    taste_render=$(taste --cwd "$_dir" render 2>/dev/null) || taste_render=""
+  elif [ -x "$HOME/dotfiles/bin/taste" ]; then
+    taste_render=$("$HOME/dotfiles/bin/taste" --cwd "$_dir" render 2>/dev/null) || taste_render=""
+  fi
+fi
+
+if [ -n "$taste_render" ]; then
+  appendix="$appendix
+
+$taste_render"
+fi
+
 printf '%s\n%s\n' "$(cat)" "$appendix"

@@ -23,3 +23,20 @@ model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
 # Full typed sync of everything that happened this turn (and anything the
 # earlier hooks could not see: thinking, tool calls, tool results).
 traces_guard python3 "$_TRACES_HOOK_DIR/traces-sync.py" "$conv_id"
+
+# TASTE: fire the background learner for this conversation (detached,
+# fire-and-forget). `taste learn` reads the transcript from Shelley's DB,
+# side-calls the distiller LLM, and merges learnings into taste.md files.
+# It holds a global flock, so multiple rapid end-of-turns queue up safely;
+# state-per-conversation makes dropping a run harmless (the next one
+# catches up). Never blocks or breaks this hook: fully guarded.
+_taste_bin=""
+if command -v taste >/dev/null 2>&1; then
+  _taste_bin="taste"
+elif [ -x "$HOME/dotfiles/bin/taste" ]; then
+  _taste_bin="$HOME/dotfiles/bin/taste"
+fi
+if [ -n "$_taste_bin" ]; then
+  mkdir -p "${TASTE_STATE_DIR:-$HOME/.cache/shelley-taste}"
+  setsid "$_taste_bin" learn "$conv_id" >/dev/null 2>&1 <&- &
+fi

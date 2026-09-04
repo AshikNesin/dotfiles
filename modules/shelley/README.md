@@ -2,6 +2,42 @@
 
 Configuration and hooks for the Shelley coding agent.
 
+## Taste (learned preferences)
+
+A local re-implementation of Command Code's Taste feature
+(https://commandcode.ai/docs/taste), built on Shelley lifecycle hooks — no
+cloud, no rebuild, all local.
+
+| Piece | Mechanism |
+|---|---|
+| learning | `end-of-turn` hook fires `taste learn <conv>` (detached); the distiller reads the conversation from Shelley's SQLite DB, side-calls a cheap LLM (exe.dev gateway, keyless) and merges durable preferences into per-package `taste.md` files |
+| injection | `system-prompt` hook appends `taste render` — every session (main + subagents) starts with the user's taste profile |
+| control | `/taste` slash panel + `taste` CLI in `~/dotfiles/bin` |
+| sharing | commit `.shelley/taste/` — teammates get it via git (no cloud needed) |
+
+Storage:
+- project: `<git-root>/.shelley/taste/<pkg>/taste.md` (commit for the team)
+- global:  `~/.config/shelley/taste/<pkg>/taste.md` (follows you across projects)
+
+Learning can be toggled per project (`taste disable` → `.shelley/settings.local.json`)
+or user-wide (`taste disable --user` → `~/.config/shelley/config.json`); default on.
+Kill switch: `export TASTE_DISABLE=1`. State/log: `~/.cache/shelley-taste/`.
+
+Common commands:
+```sh
+taste status                          # settings, packages, injection size
+taste doctor                          # diagnose the pipeline end-to-end
+taste list [-g]                       # packages, learning counts
+taste note "prefer table-driven tests" [--package testing]
+taste forget "substring"              # remove matching learnings
+taste lint                            # validate taste.md files
+taste push [pkg|--all]                # project -> global
+taste pull [pkg|--all]                # global -> project
+taste learn <conv-id> [--dry-run]     # manual learn run
+```
+In a Shelley conversation: `/taste`, `/taste on|off`, `/taste list`,
+`/taste note ...`, `/taste render`, `/taste doctor`.
+
 ## Traces bridge
 
 Captures every Shelley conversation into [Traces](https://traces.com) as a

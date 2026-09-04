@@ -1,0 +1,980 @@
+#!/usr/bin/env python3
+"""taste — learned user preferences for the Shelley coding agent.
+
+A local, git-native re-implementation of Command Code's Taste feature
+(https://commandcode.ai/docs/taste), built on Shelley lifecycle hooks:
+
+  learn    end-of-turn hook spawns `taste learn <conv>`; the distiller reads
+           the conversation transcript from Shelley's SQLite DB, side-calls a
+           cheap LLM to extract durable preferences, and merges them into
+           per-package taste.md files (dedup + confidence updates).
+  render   system-prompt hook appends `taste render` output so every session
+           (main + subagents) starts with the user's taste profile.
+  control  /taste slash panel + this CLI: enable/disable, list, lint, note,
+           forget, push/pull between project and global scopes.
+
+Storage (packages of learnings, human-editable markdown):
+  project  <git-root>/.shelley/taste/<pkg>/taste.md     (commit for the team)
+  global   ~/.config/shelley/taste/<pkg>/taste.md       (follows you around)
+
+Settings precedence (tasteLearning true/false, default on):
+  1. <root>/.shelley/settings.local.json   personal, not committed
+  2. <root>/.shelley/settings.json         committed, shared with the team
+  3. ~/.config/shelley/config.json         user-level default
+
+Env: TASTE_DISABLE=1 (kill switch), TASTE_DB (Shelley sqlite path),
+     TASTE_MODEL / TASTE_BASE_URL / TASTE_API_KEY (distiller LLM),
+     TASTE_STATE_DIR, TASTE_LOG.
+
+Exit codes: 0 ok (or fail-open skip) | 1 usage | 2 bad input | 3 upstream error
+"""
+
+import argparse
+import datetime
+import difflib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+HOME = Path(os.environ.get("HOME", str(Path.home())))
+GLOBAL_DIR = HOME / ".config" / "shelley" / "taste"
+USER_CONFIG = HOME / ".config" / "shelley" / "config.json"
+TASTE_CONFIG = HOME / ".config" / "shelley" / "taste" / "config.json"
+CACHE_DIR = Path(os.environ.get("TASTE_STATE_DIR",
+                                HOME / ".cache" / "shelley-taste"))
+LOG_PATH = Path(os.environ.get("TASTE_LOG", CACHE_DIR / "log"))
+DEFAULT_DB = HOME / ".config" / "shelley" / "shelley.db"
+
+DEFAULT_BASE = "https://llm.int.exe.xyz/v1"
+DEFAULT_MODEL = "fireworks/glm-5p3-flash"
+FALLBACK_MODELS = ["fireworks/glm-5p3-flash", "fireworks/deepseek-v4-flash-0731"]
+
+PACKAGES = ["general", "code-style", "architecture", "testing",
+            "git", "workflow", "tools", "docs"]
+MAX_LEARNINGS_PER_RUN = 10
+MAX_LEARNINGS_PER_PKG = 40
+MIN_CONFIDENCE = 0.25
+MAX_TEXT_LEN = 220
+LLM_TIMEOUT = 120
+RENDER_BUDGET = 6000
+LOCK_WAIT = 45
+
+# ---------------------------------------------------------------- helpers --
+
+
+def log(msg):
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.datetime.now().isoformat(timespec="seconds")
+        with open(LOG_PATH, "a") as f:
+            f.write(f"{stamp} {msg}\n")
+    except OSError:
+        pass
+
+
+def die(msg, code=2):
+    print(f"taste: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def git_root(cwd):
+    """Nearest git root for cwd, or None. Never raises."""
+    try:
+        out = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=10)
+        if out.returncode == 0:
+            return Path(out.stdout.strip())
+    except Exception:
+        pass
+    return None
+
+
+def project_root(cwd):
+    """Directory anchoring project taste: nearest ancestor (incl. cwd)
+    containing .shelley, bounded by the git root; else the git root; else cwd."""
+    cwd = Path(cwd).resolve()
+    root = git_root(cwd) or cwd
+    for d in [cwd, *cwd.parents]:
+        if (d / ".shelley").is_dir():
+            return d
+        if d == root:
+            break
+    return root
+
+
+def read_setting(path):
+    try:
+        with open(path) as f:
+            return json.load(f).get("tasteLearning")
+    except (OSError, ValueError):
+        return None
+
+
+def enabled_for(cwd, default=True):
+    """Settings precedence: settings.local > settings > user config > default."""
+    if os.environ.get("TASTE_DISABLE") == "1":
+        return False
+    if cwd:
+        root = project_root(cwd)
+        for name in ("settings.local.json", "settings.json"):
+            v = read_setting(root / ".shelley" / name)
+            if v is not None:
+                return bool(v)
+    v = read_setting(USER_CONFIG)
+    if v is not None:
+        return bool(v)
+    return default
+
+
+VALID_PKG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+def pkg_dir(pkg, scope, cwd):
+    if not VALID_PKG.match(pkg or ""):
+        return None
+    base = project_root(cwd) / ".shelley" / "taste" if scope == "project" else GLOBAL_DIR
+    return base / pkg
+
+
+# ------------------------------------------------------- taste.md parsing --
+
+LEARNING_RE = re.compile(
+    r"^\s*-\s*\[([0-9]*\.?[0-9]+)\]\s*(.+?)\s*"
+    r"\(learned\s+(\d{4}-\d{2}-\d{2})(?:,\s*conv\s+(\S+))?\)\s*$")
+
+
+class Learning:
+    __slots__ = ("text", "conf", "date", "conv")
+
+    def __init__(self, text, conf, date=None, conv=None):
+        self.text = text.strip()
+        self.conf = max(0.0, min(1.0, float(conf)))
+        self.date = date or datetime.date.today().isoformat()
+        self.conv = conv
+
+    def line(self):
+        tail = f"(learned {self.date}"
+        if self.conv:
+            tail += f", conv {self.conv})"
+        else:
+            tail += ")"
+        return f"- [{self.conf:.2f}] {self.text} {tail}"
+
+
+def parse_taste_md(path):
+    """Parse learnings from a taste.md; ignores headers/prose/comments."""
+    out = []
+    try:
+        with open(path) as f:
+            for line in f:
+                m = LEARNING_RE.match(line)
+                if m:
+                    out.append(Learning(m.group(2), float(m.group(1)), m.group(3), m.group(4)))
+    except OSError:
+        pass
+    return out
+
+
+def write_taste_md(path, pkg, scope, learnings):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    where = "project" if scope == "project" else "global"
+    header = (
+        f"# taste: {pkg} ({where})\n\n"
+        "Learned preferences for how this user wants work done. Edit freely\n"
+        "by hand — the learner merges around manual edits. Format:\n"
+        "`- [confidence 0-1] preference (learned YYYY-MM-DD)`.\n"
+        "Validate with `taste lint`.\n\n"
+    )
+    body = "\n".join(l.line() for l in learnings)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(header + (body + "\n" if body else ""))
+    os.replace(tmp, path)
+
+
+def normalize(text):
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", text.lower())).strip()
+
+
+def similar(a, b):
+    na, nb = normalize(a), normalize(b)
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    return difflib.SequenceMatcher(None, na, nb).ratio() > 0.75
+
+
+def merge_learnings(existing, incoming, conv=None):
+    """CC-style merge: new added, matches reinforce/adjust confidence.
+    Accepts Learning objects or sanitized dicts (converted)."""
+    added, updated, unchanged = [], [], []
+    for inc in incoming:
+        if isinstance(inc, dict):
+            inc = Learning(inc["text"], inc.get("confidence", 0.6), conv=conv)
+        elif conv and not inc.conv:
+            inc = Learning(inc.text, inc.conf, inc.date, conv)
+        hit = next((e for e in existing if similar(e.text, inc.text)), None)
+        if hit is None:
+            existing.append(inc)
+            added.append(inc)
+        else:
+            before = hit.conf
+            if inc.conf >= hit.conf:
+                hit.conf = min(0.95, hit.conf + max(0.05, (inc.conf - hit.conf) * 0.5))
+            else:
+                hit.conf = max(0.2, hit.conf - 0.05)
+            hit.date = datetime.date.today().isoformat()
+            if abs(hit.conf - before) > 0.001:
+                updated.append((hit, before))
+            else:
+                unchanged.append(hit)
+    return added, updated, unchanged
+
+
+def prune(learnings):
+    """Cap package size and floor confidence."""
+    keep = [l for l in learnings if l.conf >= MIN_CONFIDENCE]
+    if len(keep) > MAX_LEARNINGS_PER_PKG:
+        keep.sort(key=lambda l: -l.conf)
+        keep = keep[:MAX_LEARNINGS_PER_PKG]
+    keep.sort(key=lambda l: (-l.conf, l.text))
+    return keep
+
+
+# ------------------------------------------------------------- sanitizer --
+
+SECRET_PATTERNS = [
+    re.compile(p, re.IGNORECASE) for p in (
+        r"(api[_-]?key|secret|password|passwd|token|bearer)\s*[:=]\s*\S{8,}",
+        r"AKIA[0-9A-Z]{16}", r"sk-[A-Za-z0-9_-]{16,}", r"ghp_[A-Za-z0-9]{20,}",
+        r"-----BEGIN [A-Z ]*PRIVATE KEY-----",
+    )]
+
+
+def scrub(text):
+    for pat in SECRET_PATTERNS:
+        text = pat.sub("[redacted]", text)
+    return text
+
+
+# ------------------------------------------------------------ transcript --
+
+
+def open_db():
+    import sqlite3
+    db_path = os.environ.get("TASTE_DB", str(DEFAULT_DB))
+    if not os.path.exists(db_path):
+        return None
+    uri = f"file:{db_path}?mode=ro"
+    return sqlite3.connect(uri, timeout=10)
+
+
+def fetch_conversation(db, conv_id):
+    row = db.execute(
+        "SELECT cwd, model FROM conversations WHERE conversation_id=?", (conv_id,)
+    ).fetchone()
+    return (row[0], row[1]) if row else (None, None)
+
+
+def fetch_transcript(db, conv_id, after_seq, char_cap=28000):
+    """Rows since after_seq -> compact transcript of real interaction.
+    Returns (lines, max_seq_seen). Only genuine user text triggers learning;
+    tool results and agent replies are context."""
+    rows = db.execute(
+        "SELECT sequence_id, type, user_data, llm_data FROM messages "
+        "WHERE conversation_id=? AND sequence_id>? AND excluded_from_context=0 "
+        "ORDER BY sequence_id", (conv_id, after_seq)).fetchall()
+    if not rows:
+        return [], after_seq
+    lines, user_chars = [], 0
+    for seq, mtype, udata, ldata in rows:
+        try:
+            raw_data = udata if mtype == "user" else ldata
+            if not raw_data:
+                raw_data = ldata or udata
+            data = json.loads(raw_data) if raw_data else None
+        except ValueError:
+            continue
+        if not data:
+            continue
+        role = data.get("Role", 0)
+        for part in data.get("Content") or []:
+            if mtype == "user" and role == 0 and part.get("Type") == 2 and part.get("Text"):
+                text = part["Text"].strip()
+                if text:
+                    lines.append(("USER", text))
+                    user_chars += len(text)
+            elif mtype == "agent" and part.get("Type") == 2 and part.get("Text"):
+                text = part["Text"].strip()
+                if text:
+                    lines.append(("AGENT", text[:500]))
+            elif mtype == "agent" and part.get("Type") == 5 and part.get("ToolName"):
+                lines.append(("TOOL", part["ToolName"]))
+    max_seq = max(r[0] for r in rows)
+    if user_chars < 60:
+        return [], max_seq  # no genuine user input this window
+    # Keep within char cap, preferring the tail (most recent signal).
+    out = []
+    for who, text in reversed(lines):
+        if sum(len(t) for _, t in out) + len(text) > char_cap:
+            break
+        out.append((who, text))
+    return list(reversed(out)), max_seq
+
+
+def render_transcript(lines):
+    parts = []
+    for who, text in lines:
+        if who == "TOOL":
+            if parts and parts[-1].startswith("tools:"):
+                parts[-1] += f" {text}"
+            else:
+                parts.append(f"tools: {text}")
+        else:
+            parts.append(f"{who}: {scrub(text)}")
+    return "\n".join(parts)
+
+
+# -------------------------------------------------------------- distiller --
+
+
+def llm_config():
+    cfg = {}
+    try:
+        with open(TASTE_CONFIG) as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        pass
+    return {
+        "model": os.environ.get("TASTE_MODEL") or cfg.get("model") or DEFAULT_MODEL,
+        "base": os.environ.get("TASTE_BASE_URL") or cfg.get("base_url") or DEFAULT_BASE,
+        "key": os.environ.get("TASTE_API_KEY") or cfg.get("api_key") or "",
+    }
+
+
+def llm_complete(prompt):
+    """Side-call the distiller LLM (exe.dev gateway is keyless). Fail-open."""
+    cfg = llm_config()
+    body = {
+        "model": cfg["model"],
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+    }
+    headers = {"Content-Type": "application/json"}
+    if cfg["key"]:
+        headers["Authorization"] = f"Bearer {cfg['key']}"
+    last_err = None
+    for model in dict.fromkeys([cfg["model"]] + FALLBACK_MODELS):
+        body["model"] = model
+        try:
+            req = urllib.request.Request(
+                cfg["base"] + "/chat/completions",
+                data=json.dumps(body).encode(), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=LLM_TIMEOUT) as r:
+                resp = json.load(r)
+            content = (resp.get("choices") or [{}])[0].get("message", {}).get("content", "")
+            if content and content.strip():
+                return content.strip()
+            last_err = f"model {model}: empty content"
+        except Exception as e:  # noqa: BLE001 — fail open on any upstream issue
+            last_err = f"model {model}: {e}"
+            if isinstance(e, urllib.error.HTTPError) and e.code == 404:
+                continue
+            if isinstance(e, urllib.error.HTTPError) and e.code in (400, 422):
+                continue  # param mismatch etc. — try next model
+    log(f"llm failed: {last_err}")
+    return None
+
+
+DISTILL_PROMPT = """You distill durable user preferences ("taste") from a coding-agent conversation.
+
+Return ONLY JSON, no prose, no markdown fences:
+{{"learnings": [{{"text": "...", "package": "general|code-style|architecture|testing|git|workflow|tools|docs", "confidence": 0.0-1.0}}], "notes": "one line, may be empty"}}
+
+COUNTS as taste (how the user wants work done, durably):
+- explicit directives: "always run tests before committing", "never use tabs"
+- corrections of the agent's behavior: user rejects an approach and imposes another
+- style, architecture, naming, tooling, commit-message, and workflow preferences
+- patterns the user enforced more than once
+
+DOES NOT COUNT:
+- one-off facts, tasks, or questions specific to this conversation's topic
+- secrets, credentials, tokens, URLs with keys (never reproduce them)
+- anything already covered by the existing learnings below (return it again only to REINFORCE it with higher confidence when the user repeated it emphatically)
+
+Rules: text <= 200 chars, imperative voice, self-contained; package "general" only if it applies to ANY project; at most {cap} learnings; confidence 0.9+ only for unmistakable explicit directives.
+
+Existing learnings (project):
+{project}
+
+Existing learnings (global):
+{global_}
+
+Conversation:
+{transcript}"""
+
+
+def parse_llm_json(raw):
+    if not raw:
+        return []
+    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
+    start = min((i for i in (raw.find("{"), raw.find("[")) if i >= 0), default=-1)
+    if start < 0:
+        return []
+    for end in range(len(raw), start, -1):
+        try:
+            obj = json.loads(raw[start:end])
+        except ValueError:
+            continue
+        items = obj.get("learnings") if isinstance(obj, dict) else obj
+        if isinstance(items, list):
+            return items
+        break
+    return []
+
+
+def sanitize_incoming(items):
+    out = []
+    seen = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        text = scrub(str(it.get("text", "")).strip())
+        pkg = str(it.get("package", "general")).strip().lower()
+        try:
+            conf = float(it.get("confidence", 0.6))
+        except (TypeError, ValueError):
+            conf = 0.6
+        if not text or len(text) > MAX_TEXT_LEN or len(text) < 8:
+            continue
+        if pkg not in PACKAGES:
+            pkg = "general"
+        if any(similar(text, s) for s in seen):
+            continue
+        seen.append(text)
+        out.append({"text": text, "package": pkg, "confidence": conf})
+    return out[:MAX_LEARNINGS_PER_RUN]
+
+
+# ------------------------------------------------------------------ learn --
+
+
+def state_path(conv_id):
+    return CACHE_DIR / "state" / f"{conv_id}.seq"
+
+
+def read_state(conv_id):
+    try:
+        return int(state_path(conv_id).read_text().strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def write_state(conv_id, seq):
+    state_path(conv_id).parent.mkdir(parents=True, exist_ok=True)
+    state_path(conv_id).write_text(str(seq))
+
+
+def learn(conv_id, dry_run=False):
+    """The background learner. Fail-open by design."""
+    db = open_db()
+    if db is None:
+        log(f"{conv_id}: no db")
+        return 0
+    try:
+        cwd, _model = fetch_conversation(db, conv_id)
+        last = read_state(conv_id)
+        lines, max_seq = fetch_transcript(db, conv_id, last)
+        if not lines:
+            write_state(conv_id, max_seq)
+            return 0
+        if not enabled_for(cwd if cwd else None):
+            write_state(conv_id, max_seq)
+            log(f"{conv_id}: taste disabled for {cwd}")
+            return 0
+
+        root = project_root(cwd) if cwd else None
+        project_pkgs = collect(root / ".shelley" / "taste") if root else {}
+        global_pkgs = collect(GLOBAL_DIR)
+
+        prompt = DISTILL_PROMPT.format(
+            cap=MAX_LEARNINGS_PER_RUN,
+            project=format_existing(project_pkgs) or "(none)",
+            global_=format_existing(global_pkgs) or "(none)",
+            transcript=render_transcript(lines),
+        )
+        raw = llm_complete(prompt)
+        items = sanitize_incoming(parse_llm_json(raw))
+        write_state(conv_id, max_seq)  # advance even on upstream failure
+        if not items:
+            log(f"{conv_id}: nothing learned ({'no llm' if not raw else 'filtered'})")
+            return 0
+        if dry_run:
+            for it in items:
+                print(f"would add [{it['package']}:{it['confidence']:.2f}] {it['text']}")
+            return 0
+
+        today = datetime.date.today().isoformat()
+        report = []
+        for scope, pkgs in (("project", project_pkgs), ("global", global_pkgs)):
+            by_pkg = {}
+            for it in items:
+                # generic learnings go global; specific ones go project
+                if scope == "global" and not (it["package"] == "general" and it["confidence"] < 0.85):
+                    continue
+                if scope == "project" and it["package"] == "general" and it["confidence"] < 0.85:
+                    continue
+                by_pkg.setdefault(it["package"], []).append(
+                    Learning(it["text"], it["confidence"], conv=conv_id))
+            for pkg, inc in by_pkg.items():
+                base = (root / ".shelley" / "taste") if scope == "project" else GLOBAL_DIR
+                existing = pkgs.get(pkg, [])
+                added, updated, unchanged = merge_learnings(existing, inc, conv=conv_id)
+                merged = prune(existing)
+                if merged or added:
+                    write_taste_md(base / pkg / "taste.md", pkg, scope, merged)
+                for l in added:
+                    report.append(f"+ [{scope}/{pkg}] {l.text}")
+                for l, before in updated:
+                    report.append(f"~ [{scope}/{pkg}] {l.text} ({before:.2f}->{l.conf:.2f})")
+        log(f"{conv_id}: learned {len(report)} change(s)")
+        for r in report:
+            print(r)
+        if not report:
+            print(f"taste: reinforced {len(items)} existing learning(s) (no change)")
+        return 0
+    except Exception as e:  # noqa: BLE001 — learner must never crash loudly
+        log(f"{conv_id}: error {e!r}")
+        return 0
+    finally:
+        db.close()
+
+
+def collect(base):
+    pkgs = {}
+    if base and base.is_dir():
+        for d in sorted(base.iterdir()):
+            if d.is_dir() and VALID_PKG.match(d.name):
+                ls = parse_taste_md(d / "taste.md")
+                if ls:
+                    pkgs[d.name] = ls
+    return pkgs
+
+
+def format_existing(pkgs):
+    out = []
+    for name, ls in sorted(pkgs.items()):
+        for l in ls[:15]:
+            out.append(f"[{name}:{l.conf:.2f}] {l.text}")
+    return "\n".join(out)
+
+
+# ----------------------------------------------------------------- render --
+
+
+def render(cwd, budget=RENDER_BUDGET, fmt="text"):
+    if not enabled_for(cwd):
+        return "" if fmt == "text" else json.dumps({"enabled": False, "packages": {}})
+    entries = []  # (scope, pkg, conf, text)
+    for scope, base in (("global", GLOBAL_DIR),
+                        ("project", (project_root(cwd) / ".shelley" / "taste") if cwd else None)):
+        for pkg, ls in collect(base).items():
+            for l in ls:
+                entries.append((scope, pkg, l.conf, l.text))
+    # project wins over global on near-duplicates; then confidence order
+    entries.sort(key=lambda e: (e[0] != "project", -e[2]))
+    seen, chosen = [], []
+    for e in entries:
+        if any(similar(e[3], s) for s in seen):
+            continue
+        seen.append(e[3])
+        chosen.append(e)
+    if fmt == "json":
+        return json.dumps({"enabled": True, "learnings": [
+            {"scope": s, "package": p, "confidence": round(c, 2), "text": t}
+            for s, p, c, t in chosen]}, indent=2)
+    if not chosen:
+        return ""
+    lines, groups = [], {}
+    for scope, pkg, conf, text in chosen:
+        groups.setdefault((scope, pkg), []).append(f"- [{conf:.2f}] {text}")
+    for (scope, pkg) in sorted(groups, key=lambda k: (k[0] != "project", k[1])):
+        lines.append(f"### {scope} / {pkg}")
+        lines.extend(groups[(scope, pkg)])
+        lines.append("")
+    body = "\n".join(lines).rstrip()
+    if len(body) > budget:
+        body = body[:budget].rsplit("\n", 1)[0] + "\n(truncated by budget)"
+    return (
+        "## TASTE (learned user preferences)\n\n"
+        "Durable preferences distilled from this user's past sessions. Apply\n"
+        "them by default; an explicit instruction in this conversation always\n"
+        "wins. Managed by the `taste` CLI / `/taste` — do not edit this block.\n\n"
+        + body)
+
+
+# ------------------------------------------------------------------- CLI --
+
+
+def cmd_learn(args):
+    lock = CACHE_DIR / "learner.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    import fcntl
+    try:
+        with open(lock, "w") as fh:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                # Another learner is running: wait briefly, then give up
+                # (state-based catch-up makes giving up safe).
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX)
+                except OSError:
+                    return 0
+            return learn(args.conversation, dry_run=args.dry_run)
+    except OSError:
+        return learn(args.conversation, dry_run=args.dry_run)
+
+
+def cmd_render(args):
+    cwd = args.cwd or os.getcwd()
+    out = render(cwd, budget=args.budget, fmt=args.format)
+    if out:
+        print(out)
+    return 0
+
+
+def cmd_status(args):
+    cwd = args.cwd or os.getcwd()
+    root = project_root(cwd)
+    on = enabled_for(cwd)
+    cfg = llm_config()
+    print(f"taste learning : {'ON' if on else 'OFF'} for {root}")
+    print(f"project dir    : {root / '.shelley' / 'taste'}")
+    print(f"global dir     : {GLOBAL_DIR}")
+    print(f"distiller      : {cfg['model']} @ {cfg['base']}")
+    print(f"db             : {os.environ.get('TASTE_DB', DEFAULT_DB)}")
+    total = 0
+    for scope, base in (("project", root / ".shelley" / "taste"), ("global", GLOBAL_DIR)):
+        pkgs = collect(base)
+        n = sum(len(v) for v in pkgs.values())
+        total += n
+        detail = ", ".join(f"{k} ({len(v)})" for k, v in sorted(pkgs.items())) or "none"
+        print(f"{scope:<8} pkgs   : {detail}")
+    print(f"total learnings: {total}")
+    injected = render(cwd)
+    print(f"injects {len(injected)} chars into every system prompt")
+    return 0
+
+
+def _set_setting(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = {}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        pass
+    data["tasteLearning"] = bool(value)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n")
+    os.replace(tmp, path)
+
+
+def cmd_enable(args):
+    value = not args.command_disable
+    if getattr(args, "user", False):
+        _set_setting(USER_CONFIG, value)
+        print(f"taste learning {'enabled' if value else 'disabled'} at user level "
+              f"({USER_CONFIG}) — affects all projects")
+    else:
+        root = project_root(args.cwd or os.getcwd())
+        local = root / ".shelley" / "settings.local.json"
+        _set_setting(local, value)
+        print(f"taste learning {'enabled' if value else 'disabled'} for this project ({local})")
+        if not value:
+            print("tip: add .shelley/settings.local.json to .gitignore — it is personal")
+    return 0
+
+
+def cmd_list(args):
+    cwd = args.cwd or os.getcwd()
+    base = GLOBAL_DIR if args.global_scope else project_root(cwd) / ".shelley" / "taste"
+    scope = "global" if args.global_scope else "project"
+    pkgs = collect(base)
+    if not pkgs:
+        print(f"no taste packages ({scope}: {base})")
+        return 0
+    total = 0
+    for name, ls in sorted(pkgs.items()):
+        newest = max(l.date for l in ls) if ls else "-"
+        print(f"{name:<14} {len(ls):>3} learnings  updated {newest}  ({scope})")
+        total += len(ls)
+    print(f"Total: {len(pkgs)} packages, {total} learnings")
+    return 0
+
+
+def _lint_one(path):
+    errors, warnings = [], []
+    try:
+        raw = path.read_text()
+    except OSError as e:
+        return [f"unreadable: {e}"], []
+    raw.encode("utf-8")  # raises on invalid UTF-8
+    n = 0
+    for i, line in enumerate(raw.splitlines(), 1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("-"):
+            m = LEARNING_RE.match(line)
+            if not m:
+                errors.append(f"Line {i}: malformed learning line")
+                continue
+            n += 1
+            conf = float(m.group(1))
+            if not 0.0 <= conf <= 1.0:
+                errors.append(f"Line {i}: confidence must be 0-1")
+            if len(m.group(2)) > MAX_TEXT_LEN:
+                warnings.append(f"Line {i}: text longer than {MAX_TEXT_LEN} chars")
+        elif re.match(r"^-\s*\[", s):
+            errors.append(f"Line {i}: malformed learning line")
+    if n == 0:
+        warnings.append("no learnings found")
+    return errors, warnings
+
+
+def cmd_lint(args):
+    cwd = args.cwd or os.getcwd()
+    bases = []
+    if args.global_scope:
+        bases.append(("global", GLOBAL_DIR))
+    else:
+        bases.append(("project", project_root(cwd) / ".shelley" / "taste"))
+    files = []
+    for scope, base in bases:
+        if args.package:
+            p = base / args.package / "taste.md"
+            if p.exists():
+                files.append((scope, p))
+        else:
+            if base.is_dir():
+                for d in sorted(base.iterdir()):
+                    if d.is_dir() and (d / "taste.md").exists():
+                        files.append((scope, d / "taste.md"))
+    if not files:
+        print("no taste files to lint")
+        return 0
+    total_err = total_warn = 0
+    for scope, path in files:
+        errors, warnings = _lint_one(path)
+        total_err += len(errors)
+        total_warn += len(warnings)
+        mark = "\u2713" if not errors else "\u2717"
+        print(f"{mark} {path} ({scope})")
+        for e in errors:
+            print(f"  error: {e}")
+        for w in warnings:
+            print(f"  warn: {w}")
+    print(f"Summary: {total_err} errors, {total_warn} warnings across {len(files)} files")
+    return 1 if total_err else 0
+
+
+def cmd_open(args):
+    cwd = args.cwd or os.getcwd()
+    base = GLOBAL_DIR if args.global_scope else project_root(cwd) / ".shelley" / "taste"
+    path = base / args.package / "taste.md"
+    if not path.exists():
+        die(f"no such package: {args.package} ({path})")
+    editor = os.environ.get("EDITOR")
+    if editor:
+        os.execvp(editor, [editor, str(path)])
+    print(f"$EDITOR is not set; the file is at:\n{path}")
+    return 0
+
+
+def cmd_note(args):
+    cwd = args.cwd or os.getcwd()
+    text = scrub(" ".join(args.text).strip())
+    if not text:
+        die("empty note")
+    if len(text) > MAX_TEXT_LEN:
+        die(f"note too long (>{MAX_TEXT_LEN} chars)")
+    inc = [{"text": text, "package": args.package, "confidence": args.confidence}]
+    base = GLOBAL_DIR if args.global_scope else project_root(cwd) / ".shelley" / "taste"
+    existing = parse_taste_md(base / args.package / "taste.md")
+    added, updated, _ = merge_learnings(existing, inc)
+    merged = prune(existing)
+    write_taste_md(base / args.package / "taste.md", args.package,
+                   "global" if args.global_scope else "project", merged)
+    scope = "global" if args.global_scope else "project"
+    if added:
+        print(f"noted [{scope}/{args.package}] {text}")
+    else:
+        print(f"reinforced [{scope}/{args.package}] {text} -> {merged[0].conf:.2f}")
+    return 0
+
+
+def cmd_forget(args):
+    cwd = args.cwd or os.getcwd()
+    pat = " ".join(args.pattern).strip().lower()
+    removed = 0
+    for base in (project_root(cwd) / ".shelley" / "taste", GLOBAL_DIR):
+        for pkg, ls in collect(base).items():
+            keep = [l for l in ls if pat not in normalize(l.text)]
+            if len(keep) != len(ls):
+                removed += len(ls) - len(keep)
+                if keep:
+                    write_taste_md(base / pkg / "taste.md", pkg,
+                                   "global" if base == GLOBAL_DIR else "project", keep)
+                else:
+                    (base / pkg / "taste.md").unlink(missing_ok=True)
+    print(f"forgot {removed} learning(s) matching '{pat}'")
+    return 0
+
+
+def _merge_pkg(src_dir, dst_dir, pkg, scope):
+    src = parse_taste_md(src_dir / pkg / "taste.md")
+    if not src:
+        return (0, 0, 0)
+    dst_dir_pkg = dst_dir / pkg
+    existing = parse_taste_md(dst_dir_pkg / "taste.md")
+    added, updated, unchanged = merge_learnings(existing, src)
+    merged = prune(existing)
+    if merged:
+        write_taste_md(dst_dir_pkg / "taste.md", pkg, scope, merged)
+    return (len(added), len(updated), len(unchanged))
+
+
+def cmd_push_pull(args):
+    """push: project -> global. pull: global -> project.
+    Team/remote sharing rides on git: commit .shelley/taste/."""
+    cwd = args.cwd or os.getcwd()
+    proj = project_root(cwd) / ".shelley" / "taste"
+    pulling = args.command_pull
+    src_dir, dst_dir = (GLOBAL_DIR, proj) if pulling else (proj, GLOBAL_DIR)
+    if not src_dir.is_dir():
+        die(f"nothing to {('pull from' if pulling else 'push')}: {src_dir} does not exist")
+    pkgs = [d.name for d in sorted(src_dir.iterdir()) if d.is_dir() and VALID_PKG.match(d.name)]
+    if args.package:
+        pkgs = [p for p in pkgs if p == args.package]
+    if args.all:
+        pass
+    elif not args.package:
+        die("specify a package, or --all")
+    scope = "project" if pulling else "global"
+    for pkg in pkgs:
+        a, u, n = _merge_pkg(src_dir, dst_dir, pkg, scope)
+        print(f"\u2713 {'pulled' if pulling else 'pushed'} '{pkg}' "
+              f"({a} added, {u} updated, {n} unchanged)")
+    if not pkgs:
+        print("no packages matched")
+    else:
+        print("team sharing: commit the .shelley/taste/ directory and teammates "
+              "get it via git — no cloud needed")
+    return 0
+
+
+def cmd_doctor(args):
+    ok = True
+    def check(name, cond, detail=""):
+        nonlocal ok
+        print(f"{'\u2713' if cond else '\u2717'} {name}{(' — ' + detail) if detail else ''}")
+        ok = ok and cond
+    cwd = args.cwd or os.getcwd()
+    check("db readable", Path(os.environ.get("TASTE_DB", DEFAULT_DB)).exists(),
+          os.environ.get("TASTE_DB", str(DEFAULT_DB)))
+    check("taste enabled", enabled_for(cwd), f"for {project_root(cwd)}")
+    cfg = llm_config()
+    check("distiller configured", bool(cfg["model"]), cfg["model"])
+    probe = llm_complete('Reply with only the JSON: {"learnings":[],"notes":"ok"}')
+    check("distiller reachable", probe is not None, "" if probe else "see TASTE_LOG / TASTE_BASE_URL")
+    check("cache writable", CACHE_DIR.exists() or CACHE_DIR.mkdir(parents=True, exist_ok=True) is None)
+    tail = ""
+    try:
+        tail = "\n".join(LOG_PATH.read_text().splitlines()[-5:])
+    except OSError:
+        pass
+    if tail:
+        print("\nlast log lines:")
+        print(tail)
+    return 0 if ok else 1
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="taste", description=__doc__.splitlines()[0])
+    p.add_argument("--cwd", help="operate as if in this directory")
+    p.add_argument("-g", "--global-scope", action="store_true",
+                   help="target the global scope (~/.config/shelley/taste) instead of the project")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("learn", help="distill learnings from a conversation (background)")
+    s.add_argument("conversation")
+    s.add_argument("--dry-run", action="store_true")
+    s.set_defaults(func=cmd_learn)
+
+    s = sub.add_parser("render", help="render the taste profile for prompt injection")
+    s.add_argument("--budget", type=int, default=RENDER_BUDGET)
+    s.add_argument("--format", choices=["text", "json"], default="text")
+    s.set_defaults(func=cmd_render)
+
+    s = sub.add_parser("status", help="show settings, packages, and injection size")
+    s.set_defaults(func=cmd_status)
+
+    s = sub.add_parser("enable", help="turn taste learning on")
+    s.add_argument("--user", action="store_true", help="user level (all projects)")
+    s.set_defaults(func=cmd_enable, command_disable=False)
+    s = sub.add_parser("disable", help="turn taste learning off")
+    s.add_argument("--user", action="store_true", help="user level (all projects)")
+    s.set_defaults(func=cmd_enable, command_disable=True)
+
+    s = sub.add_parser("list", help="list taste packages")
+    s.set_defaults(func=cmd_list)
+
+    s = sub.add_parser("lint", help="validate taste.md files")
+    s.add_argument("package", nargs="?")
+    s.add_argument("--all", action="store_true")
+    s.set_defaults(func=cmd_lint)
+
+    s = sub.add_parser("open", help="open a package in $EDITOR")
+    s.add_argument("package")
+    s.set_defaults(func=cmd_open)
+
+    s = sub.add_parser("note", help="add a learning by hand")
+    s.add_argument("text", nargs="+")
+    s.add_argument("--package", default="general", choices=PACKAGES)
+    s.add_argument("--confidence", type=float, default=0.85)
+    s.set_defaults(func=cmd_note)
+
+    s = sub.add_parser("forget", help="remove learnings matching a substring")
+    s.add_argument("pattern", nargs="+")
+    s.set_defaults(func=cmd_forget)
+
+    s = sub.add_parser("push", help="merge project packages into global")
+    s.add_argument("package", nargs="?")
+    s.add_argument("--all", action="store_true")
+    s.set_defaults(func=cmd_push_pull, command_pull=False)
+    s = sub.add_parser("pull", help="merge global packages into the project")
+    s.add_argument("package", nargs="?")
+    s.add_argument("--all", action="store_true")
+    s.set_defaults(func=cmd_push_pull, command_pull=True)
+
+    s = sub.add_parser("doctor", help="diagnose the taste pipeline")
+    s.set_defaults(func=cmd_doctor)
+
+    args = p.parse_args(argv)
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(130)

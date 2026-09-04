@@ -47,6 +47,8 @@ links:
     target: ~/.config/shelley/hooks/system-prompt
   - source: modules/shelley/hooks/slash/vision
     target: ~/.config/shelley/hooks/slash/vision
+  - source: modules/shelley/hooks/slash/taste
+    target: ~/.config/shelley/hooks/slash/taste
   - source: modules/shelley/hooks/slash/websearch
     target: ~/.config/shelley/hooks/slash/websearch
   - source: modules/shelley/hooks/traces-sync.py

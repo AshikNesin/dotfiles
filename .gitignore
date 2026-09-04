@@ -2,6 +2,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/node,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,macos
 
+### Shelley taste (personal, not for the team) ###
+.shelley/settings.local.json
+
 ### macOS ###
 # General
 .DS_Store
@@ -206,3 +209,5 @@ gitleaks-report.json
 # a macOS Mach-O yq committed here broke Linux with "Exec format error"
 # (~/dotfiles/bin is on PATH, so it shadowed the real yq).
 /bin/yq
+
+__pycache__/

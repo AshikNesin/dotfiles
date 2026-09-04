@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# /taste — taste panel for Shelley (Command Code-style).
+#   /taste                -> settings + package stats + top learnings
+#   /taste status         -> same
+#   /taste on|off         -> toggle learning for this project
+#   /taste on --user      -> user-level (all projects)
+#   /taste list           -> list packages
+#   /taste note <text>    -> add a learning by hand (distiller-free)
+#   /taste forget <pat>   -> remove learnings matching a substring
+#   /taste render         -> show exactly what gets injected
+#   /taste doctor         -> diagnose the pipeline
+# stdout replaces the user message in the conversation.
+set -euo pipefail
+
+TASTE=""
+if command -v taste >/dev/null 2>&1; then
+  TASTE="taste"
+elif [ -x "$HOME/dotfiles/bin/taste" ]; then
+  TASTE="$HOME/dotfiles/bin/taste"
+fi
+[ -z "$TASTE" ] && { echo "taste CLI not found — is ~/dotfiles/bin on PATH?"; exit 0; }
+
+cmd="${1:-status}"; [ $# -gt 0 ] && shift
+case "$cmd" in
+  on|enable)    exec "$TASTE" --cwd "$SHELLEY_CWD" enable "$@" ;;
+  off|disable)  exec "$TASTE" --cwd "$SHELLEY_CWD" disable "$@" ;;
+  list|status|render|doctor)
+                exec "$TASTE" --cwd "$SHELLEY_CWD" "$cmd" "$@" ;;
+  note|forget)  exec "$TASTE" --cwd "$SHELLEY_CWD" "$cmd" "$@" ;;
+  *)
+    cat <<'EOF'
+/taste — manage your learned preferences
+  /taste              settings + packages + top learnings
+  /taste on|off       toggle learning (this project); --user for all projects
+  /taste list         list packages
+  /taste note <text>  add a learning by hand
+  /taste forget <p>   remove learnings matching a substring
+  /taste render       show what gets injected into prompts
+  /taste doctor       diagnose the pipeline
+EOF
+    ;;
+esac
