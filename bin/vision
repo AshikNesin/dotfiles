@@ -50,9 +50,6 @@ MAX_COMPLETION_TOKENS = 16384
 CURATED_MODELS = [
     "gpt-5.6-luna",
     "gpt-5.6-terra",
-    "gpt-5.6-sol",
-    "gpt-5.4-mini",
-    "gpt-5.4-nano",
 ]
 
 FALLBACK_BASES = [
