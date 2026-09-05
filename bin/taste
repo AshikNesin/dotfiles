@@ -305,10 +305,11 @@ def fetch_conversation(db, conv_id):
     return (row[0], row[1]) if row else (None, None)
 
 
-def fetch_transcript(db, conv_id, after_seq, char_cap=28000):
+def fetch_transcript(db, conv_id, after_seq, char_cap=28000, full=False):
     """Rows since after_seq -> compact transcript of real interaction.
     Returns (lines, max_seq_seen). Only genuine user text triggers learning;
-    tool results and agent replies are context."""
+    tool results and agent replies are context. full=True keeps longer agent
+    text (backfill) instead of the incremental 500-char tail-only view."""
     rows = db.execute(
         "SELECT sequence_id, type, user_data, llm_data FROM messages "
         "WHERE conversation_id=? AND sequence_id>? AND excluded_from_context=0 "
@@ -336,7 +337,7 @@ def fetch_transcript(db, conv_id, after_seq, char_cap=28000):
             elif mtype == "agent" and part.get("Type") == 2 and part.get("Text"):
                 text = part["Text"].strip()
                 if text:
-                    lines.append(("AGENT", text[:500]))
+                    lines.append(("AGENT", text if full else text[:500]))
             elif mtype == "agent" and part.get("Type") == 5 and part.get("ToolName"):
                 lines.append(("TOOL", part["ToolName"]))
     max_seq = max(r[0] for r in rows)
@@ -856,6 +857,106 @@ def cmd_import(args):
     return 0
 
 
+def _chunk_transcript(lines, cap=24000):
+    """Split transcript lines into chunks of ~cap chars, keeping order."""
+    chunks, cur, size = [], [], 0
+    for line in lines:
+        if cur and size + len(line[1]) > cap:
+            chunks.append(cur)
+            cur, size = [], 0
+        cur.append(line)
+        size += len(line[1])
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+
+def cmd_backfill(args):
+    """Read ALL Shelley conversations (or one --conversation) and distill
+    taste into each conversation's repo. Groups conversations by taste root,
+    distills chunks concurrently, merges sequentially per repo, then advances
+    per-conversation state so the live learner doesn't redo the work."""
+    import concurrent.futures
+    db = open_db()
+    if db is None:
+        die("no Shelley db")
+    roots = {}
+    rows = db.execute(
+        "SELECT conversation_id FROM conversations WHERE user_initiated=1 ORDER BY updated_at"
+    ).fetchall()
+    if args.conversation:
+        rows = [(args.conversation,)]
+    skipped = []
+    for (cid,) in rows:
+        cwd, _m = fetch_conversation(db, cid)
+        if not cwd or not Path(cwd).is_dir():
+            skipped.append((cid, cwd)); continue
+        root = project_root(cwd)
+        if not enabled_for(cwd):
+            skipped.append((cid, f"disabled ({cwd})")); continue
+        if not os.access(root, os.W_OK):
+            skipped.append((cid, f"no write access ({root})")); continue
+        roots.setdefault(str(root), {"root": root, "convs": []})["convs"].append(cid)
+    print(f"{len(rows)} conversation(s), {len(roots)} repo(s)" +
+          (f", {len(skipped)} skipped" if skipped else ""))
+
+    def distill_chunk(job):
+        root, chunk = job
+        prompt = DISTILL_PROMPT.format(
+            cap=MAX_LEARNINGS_PER_RUN,
+            seed=", ".join(SEED_PACKAGES + sorted(
+                set(collect(taste_base(root))) | set(collect(GLOBAL_DIR)))),
+            project=project_context(root),
+            project_learnings=format_existing(collect(taste_base(root))) or "(none)",
+            global_learnings=format_existing(collect(GLOBAL_DIR)) or "(none)",
+            transcript=render_transcript(chunk),
+        )
+        return sanitize_incoming(parse_llm_json(llm_complete(prompt)))
+
+    total_changes = 0
+    for info in sorted(roots.values(), key=lambda i: str(i["root"])):
+        root, convs = info["root"], info["convs"]
+        print(f"\n=== {root} ({len(convs)} conversation(s))")
+        jobs = []
+        for cid in convs:
+            lines, max_seq = fetch_transcript(db, cid, 0, char_cap=10**9, full=True)
+            if lines:
+                for ch in _chunk_transcript(lines):
+                    jobs.append((root, ch))
+            else:
+                print(f"  {cid}: no user content")
+        if not jobs:
+            continue
+        print(f"  distilling {len(jobs)} chunk(s)...")
+        all_items = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
+            for items in ex.map(distill_chunk, jobs):
+                all_items.extend(items)
+        if not all_items:
+            print("  nothing learned"); continue
+        seen = []
+        uniq = []
+        for it in all_items:
+            if any(similar(it["text"], s) for s in seen):
+                continue
+            seen.append(it["text"]); uniq.append(it)
+        report = apply_learnings(uniq, root, source="backfill")
+        total_changes += len(report)
+        for r in report[:8]:
+            print(f"  {r}")
+        if len(report) > 8:
+            print(f"  ...and {len(report)-8} more")
+        if args.advance:
+            for cid in convs:
+                _, max_seq = fetch_transcript(db, cid, 0, char_cap=1)
+                write_state(cid, max_seq)
+    print(f"\n✓ backfill complete: {total_changes} change(s)" +
+          (f", {len(skipped)} skipped" if skipped else ""))
+    for cid, why in skipped[:5]:
+        print(f"  skipped {cid}: {why}")
+    return 0
+
+
 def cmd_migrate(args):
     """Move legacy .shelley/taste stores to the neutral .taste layout."""
     cwd = args.cwd or os.getcwd()
@@ -1213,6 +1314,13 @@ def main(argv=None):
     s = sub.add_parser("import", help="import a Command Code store (.commandcode/taste)")
     s.add_argument("path", help="path to the .commandcode/taste directory")
     s.set_defaults(func=cmd_import)
+
+    s = sub.add_parser("backfill", help="distill taste from ALL shelley conversations into their repos")
+    s.add_argument("--conversation", help="single conversation id instead of all")
+    s.add_argument("--workers", type=int, default=4, help="parallel distill calls")
+    s.add_argument("--no-advance", dest="advance", action="store_false",
+                   help="don't advance per-conversation state (learner will reprocess)")
+    s.set_defaults(func=cmd_backfill)
 
     s = sub.add_parser("migrate", help="move legacy .shelley/taste stores to .taste")
     s.set_defaults(func=cmd_migrate)
