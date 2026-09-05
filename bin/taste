@@ -634,12 +634,50 @@ def format_existing(pkgs):
 # ----------------------------------------------------------------- render --
 
 
-def render(cwd, budget=RENDER_BUDGET, fmt="text"):
+# Tier-1 "core" packages: preferences that apply to ANY project. Injected
+# in full (within a tight budget) into every prompt.
+CORE_PACKAGES = {"general", "workflow", "git", "code-style", "docs", "architecture"}
+CORE_BUDGET = 900        # chars for tier-1 content
+MATCH_BUDGET = 1800      # chars for tier-2 (project-matched) content
+CORE_MIN_CONF = 0.5      # tier-1 admits only reasonably confident entries
+
+
+def match_terms(cwd):
+    """Tokens from the cwd path + top-level dirs/files, used to decide which
+    packages are relevant to THIS project (tier 2). Cheap, no LLM."""
+    terms = set()
+    p = Path(cwd).resolve()
+    for part in p.parts:
+        for tok in re.split(r"[^a-z0-9]+", part.lower()):
+            if len(tok) >= 3:
+                terms.add(tok)
+    try:
+        for e in list(p.iterdir())[:50]:
+            for tok in re.split(r"[^a-z0-9]+", e.name.lower()):
+                if len(tok) >= 3:
+                    terms.add(tok)
+        # ecosystem markers
+        for marker in ("settings.gradle", "go.mod", "Cargo.toml", "package.json",
+                       "pubspec.yaml", "pyproject.toml", "next.config.js"):
+            if (p / marker).exists() or _glob(p, marker):
+                for tok in ("android", "go", "rust", "react", "flutter", "python", "next"):
+                    terms.add(tok)
+                if marker == "package.json":
+                    terms.add("react")
+                    terms.add("node")
+    except OSError:
+        pass
+    return terms
+
+
+def render(cwd, budget=None, fmt="text"):
     if not enabled_for(cwd):
-        return "" if fmt == "text" else json.dumps({"enabled": False, "packages": {}})
+        return "" if fmt == "text" else json.dumps({"enabled": False, "learnings": []})
+    cwd = cwd or os.getcwd()
+    terms = match_terms(cwd) if Path(cwd).is_dir() else set()
     entries = []  # (scope, pkg, conf, text)
     for scope, base in (("global", GLOBAL_DIR),
-                        ("project", (project_root(cwd) / ".shelley" / "taste") if cwd else None)):
+                        ("project", project_root(cwd) / ".shelley" / "taste")):
         for pkg, ls in collect(base).items():
             for l in ls:
                 entries.append((scope, pkg, l.conf, l.text))
@@ -655,18 +693,47 @@ def render(cwd, budget=RENDER_BUDGET, fmt="text"):
         return json.dumps({"enabled": True, "learnings": [
             {"scope": s, "package": p, "confidence": round(c, 2), "text": t}
             for s, p, c, t in chosen]}, indent=2)
-    if not chosen:
-        return ""
-    lines, groups = [], {}
+
+    core, matched, indexed = [], [], []
     for scope, pkg, conf, text in chosen:
-        groups.setdefault((scope, pkg), []).append(f"- [{conf:.2f}] {text}")
-    for (scope, pkg) in sorted(groups, key=lambda k: (k[0] != "project", k[1])):
-        lines.append(f"### {scope} / {pkg}")
-        lines.extend(groups[(scope, pkg)])
-        lines.append("")
-    body = "\n".join(lines).rstrip()
-    if len(body) > budget:
-        body = body[:budget].rsplit("\n", 1)[0] + "\n(truncated by budget)"
+        if pkg in CORE_PACKAGES:
+            if conf >= CORE_MIN_CONF or scope == "project":
+                core.append((scope, pkg, conf, text))
+                continue
+        if any(tok in terms for tok in re.split(r"[^a-z0-9]+", pkg)) or scope == "project":
+            matched.append((scope, pkg, conf, text))
+        else:
+            indexed.append((scope, pkg, conf, text))
+
+    def block(items, cap):
+        groups = {}
+        for scope, pkg, conf, text in items:
+            groups.setdefault((scope, pkg), []).append(f"- [{conf:.2f}] {text}")
+        lines = []
+        for (scope, pkg) in sorted(groups, key=lambda k: (k[0] != "project", k[1])):
+            lines.append(f"### {scope} / {pkg}")
+            lines.extend(groups[(scope, pkg)])
+            lines.append("")
+        body = "\n".join(lines).rstrip()
+        if len(body) > cap:
+            body = body[:cap].rsplit("\n", 1)[0] + "\n(truncated)"
+        return body
+
+    parts = []
+    if core:
+        parts.append(block(core, CORE_BUDGET))
+    if matched:
+        parts.append(block(matched, MATCH_BUDGET))
+    if indexed:
+        idx = ", ".join(sorted({f"{scope}/{pkg}" for scope, pkg, _, _ in indexed}))
+        parts.append(
+            f"More learned preferences available on demand — run `taste cat <pkg>` "
+            f"(or `/taste cat <pkg>`) for: {idx}.")
+    if not parts:
+        return ""
+    body = "\n\n".join(parts)
+    if budget:
+        body = body[:budget].rsplit("\n", 1)[0]
     return (
         "## TASTE (learned user preferences)\n\n"
         "Durable preferences distilled from this user's past sessions. Apply\n"
@@ -696,6 +763,26 @@ def cmd_learn(args):
             return learn(args.conversation, dry_run=args.dry_run)
     except OSError:
         return learn(args.conversation, dry_run=args.dry_run)
+
+
+def cmd_cat(args):
+    """Tier-3 pull: print a package's learnings in full (agent-invoked)."""
+    cwd = args.cwd or os.getcwd()
+    pkg = args.package
+    if not VALID_PKG.match(pkg or ""):
+        die(f"invalid package name: {pkg!r}")
+    out = []
+    for scope, base in (("project", project_root(cwd) / ".shelley" / "taste"),
+                        ("global", GLOBAL_DIR)):
+        ls = parse_taste_md(base / pkg / "taste.md")
+        if ls:
+            out.append(f"### {scope} / {pkg}")
+            out.extend(f"- [{l.conf:.2f}] {l.text}" for l in ls)
+            out.append("")
+    if not out:
+        die(f"no such package: {pkg} (see `taste list`)")
+    print("\n".join(out).rstrip())
+    return 0
 
 
 def cmd_render(args):
@@ -979,8 +1066,13 @@ def main(argv=None):
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(func=cmd_learn)
 
+    s = sub.add_parser("cat", help="print a package's learnings in full (on-demand pull)")
+    s.add_argument("package")
+    s.set_defaults(func=cmd_cat)
+
     s = sub.add_parser("render", help="render the taste profile for prompt injection")
-    s.add_argument("--budget", type=int, default=RENDER_BUDGET)
+    s.add_argument("--budget", type=int, default=None,
+                   help="optional overall char cap (tier budgets apply regardless)")
     s.add_argument("--format", choices=["text", "json"], default="text")
     s.set_defaults(func=cmd_render)
 

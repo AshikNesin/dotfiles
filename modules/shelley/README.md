@@ -11,9 +11,25 @@ cloud, no rebuild, all local.
 | Piece | Mechanism |
 |---|---|
 | learning | `end-of-turn` hook fires `taste learn <conv>` (detached); the distiller reads the conversation from Shelley's SQLite DB, side-calls a cheap LLM (exe.dev gateway, keyless) and merges durable preferences into per-package `taste.md` files |
-| injection | `system-prompt` hook appends `taste render` — every session (main + subagents) starts with the user's taste profile |
+| injection | `system-prompt` hook appends `taste render` — tiered to avoid context bloat (see below) |
 | control | `/taste` slash panel + `taste` CLI in `~/dotfiles/bin` |
 | sharing | commit `.shelley/taste/` — teammates get it via git (no cloud needed) |
+
+### Injection tiers (context-budget discipline)
+
+Research-backed (Claude Code memory docs: <200 lines or adherence drops;
+Cursor: always-apply tiny, rest on demand; Mem0: selective retrieval beats
+full stuffing), `taste render` injects three tiers:
+
+1. **Core** — cross-project packages (general/workflow/git/code-style/docs/architecture),
+   conf ≥ 0.5, capped ~900 chars. Always injected.
+2. **Matched** — packages whose names match this project (path tokens, ecosystem
+   markers like `go.mod`/`settings.gradle`) plus ALL project-scope learnings.
+   Capped ~1800 chars.
+3. **Indexed** — everything else: one index line (`taste cat <pkg>` to pull).
+   The agent fetches on demand; zero cost otherwise.
+
+Worst case ≈ 3k chars; typical case <1.5k. `taste render | wc -c` shows yours.
 
 Storage:
 - project: `<git-root>/.shelley/taste/<pkg>/taste.md` (commit for the team)

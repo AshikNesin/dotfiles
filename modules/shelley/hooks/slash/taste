@@ -24,7 +24,7 @@ cmd="${1:-status}"; [ $# -gt 0 ] && shift
 case "$cmd" in
   on|enable)    exec "$TASTE" --cwd "$SHELLEY_CWD" enable "$@" ;;
   off|disable)  exec "$TASTE" --cwd "$SHELLEY_CWD" disable "$@" ;;
-  list|status|render|doctor)
+  list|status|render|doctor|cat)
                 exec "$TASTE" --cwd "$SHELLEY_CWD" "$cmd" "$@" ;;
   note|forget)  exec "$TASTE" --cwd "$SHELLEY_CWD" "$cmd" "$@" ;;
   *)
@@ -33,6 +33,7 @@ case "$cmd" in
   /taste              settings + packages + top learnings
   /taste on|off       toggle learning (this project); --user for all projects
   /taste list         list packages
+  /taste cat <pkg>    print one package's learnings in full
   /taste note <text>  add a learning by hand
   /taste forget <p>   remove learnings matching a substring
   /taste render       show what gets injected into prompts
