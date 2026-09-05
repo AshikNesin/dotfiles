@@ -69,6 +69,7 @@ SEED_PACKAGES = ["general", "code-style", "architecture", "testing", "git",
 PKG_SHAPE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")
 MAX_LEARNINGS_PER_RUN = 10
 MAX_LEARNINGS_PER_PKG = 40
+MAX_PACKAGES = 5  # per repo: beyond this, packages fragment into noise
 MIN_CONFIDENCE = 0.25
 MAX_TEXT_LEN = 220
 LLM_TIMEOUT = 120
@@ -436,6 +437,9 @@ PACKAGES are dynamic: pick or invent short, lowercase, hyphenated category names
 that fit THIS project and the preference (existing names plus these seeds: {seed}).
 Examples: android, react, sql, api-design, error-handling, commit-style, testing.
 Use "general" only when a preference truly applies to ANY project.
+CRITICAL: reuse an existing package whenever one plausibly fits — do NOT create
+a new package just because a name comes to mind. Keep the total under {maxpkgs}.
+Create a new package only when several learnings would not fit anywhere else.
 
 Rules: text <= 200 chars, imperative voice, self-contained; at most {cap} learnings; confidence 0.9+ only for unmistakable explicit directives.
 
@@ -498,7 +502,7 @@ def _glob(root, pattern):
         return None
 
 
-def parse_llm_json(raw):
+def parse_llm_json(raw, key="learnings"):
     if not raw:
         return []
     raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
@@ -510,10 +514,11 @@ def parse_llm_json(raw):
             obj = json.loads(raw[start:end])
         except ValueError:
             continue
-        items = obj.get("learnings") if isinstance(obj, dict) else obj
-        if isinstance(items, list):
-            return items
-        break
+        if isinstance(obj, dict):
+            if key and key in obj:
+                return obj[key]
+            continue
+        return obj if isinstance(obj, list) else []
     return []
 
 
@@ -581,6 +586,7 @@ def learn(conv_id, dry_run=False):
         global_pkgs = collect(GLOBAL_DIR)
         prompt = DISTILL_PROMPT.format(
             cap=MAX_LEARNINGS_PER_RUN,
+            maxpkgs=MAX_PACKAGES,
             seed=", ".join(SEED_PACKAGES + sorted(set(project_pkgs) | set(global_pkgs))),
             project=project_context(root),
             project_learnings=format_existing(project_pkgs) or "(none)",
@@ -748,6 +754,7 @@ def distill_transcript(lines, cwd=None, dry_run=False):
     global_pkgs = collect(GLOBAL_DIR)
     prompt = DISTILL_PROMPT.format(
         cap=MAX_LEARNINGS_PER_RUN,
+            maxpkgs=MAX_PACKAGES,
         seed=", ".join(SEED_PACKAGES + sorted(set(project_pkgs) | set(global_pkgs))),
         project=project_context(root),
         project_learnings=format_existing(project_pkgs) or "(none)",
@@ -871,6 +878,88 @@ def _chunk_transcript(lines, cap=24000):
     return chunks
 
 
+CONSOLIDATE_PROMPT = """You are consolidating an agent-memory taxonomy. Below are learned user
+preferences grouped into too many small packages. Re-bucket them into at
+most {maxpkgs} packages with better, broader names.
+
+Rules:
+- PRESERVE every learning's exact text and confidence — only the grouping changes.
+- Merge related packages (e.g. web+website -> web; branding+store-assets+promo-video ->
+  store-assets; tools+release-hub -> release). Choose broad, durable names.
+- Prefer canonical names when they fit: code-style, architecture, testing, git,
+  workflow, docs, ui, security, data, tooling, domain-specific ones if truly needed.
+- Keep a learning in its current package when it already fits.
+- Drop nothing. If a package ends up empty, it disappears.
+
+Return ONLY JSON, no prose:
+{{"packages": {{"<new-or-kept-name>": [{{"text": "...", "confidence": 0.85}}, ...]}}}}
+
+Current packages:
+{current}"""
+
+
+def cmd_consolidate(args):
+    """Re-bucket a repo's learnings into <= MAX_PACKAGES packages via LLM."""
+    cwd = args.cwd or os.getcwd()
+    root = project_root(cwd)
+    base = taste_base(root)
+    pkgs = collect(base)
+    if not pkgs:
+        print(f"no taste packages at {base}")
+        return 0
+    if not args.force and len(pkgs) <= MAX_PACKAGES:
+        print(f"{len(pkgs)} packages (max {MAX_PACKAGES}) — already consolidated; "
+              f"use --force to redo")
+        return 0
+    current = "\n".join(
+        f"## {name}\n" + "\n".join(f"- {l.text} (conf {l.conf:.2f})" for l in ls)
+        for name, ls in sorted(pkgs.items()))
+    raw = llm_complete(CONSOLIDATE_PROMPT.format(maxpkgs=MAX_PACKAGES, current=current))
+    if not raw:
+        die("distiller unreachable", 3)
+    new_pkgs = parse_llm_json(raw, key="packages")
+    if not isinstance(new_pkgs, dict):
+        die("unexpected distiller response")
+    if not isinstance(new_pkgs, dict) or not new_pkgs:
+        die("empty consolidation result")
+    # validate: every learning text must survive (by prefix match; LLM may
+    # tweak whitespace)
+    old_texts = {normalize(l.text) for ls in pkgs.values() for l in ls}
+    out = {}
+    for name, items in new_pkgs.items():
+        name = name.strip().lower()
+        if not PKG_SHAPE.match(name):
+            continue
+        ls = []
+        for it in items if isinstance(items, list) else []:
+            text = str(it.get("text", "")).strip()
+            try:
+                conf = float(it.get("confidence", 0.6))
+            except (TypeError, ValueError):
+                conf = 0.6
+            if text and normalize(text) in old_texts:
+                ls.append(Learning(text, conf))
+        if ls:
+            out[name] = ls
+    survived = sum(len(v) for v in out.values())
+    total = sum(len(v) for v in pkgs.values())
+    if survived < int(total * 0.95):
+        die(f"consolidation would lose learnings ({survived}/{total}) — aborting; "
+            "re-run to retry")
+    # write new layout, remove stale package dirs
+    for d in base.iterdir():
+        if d.is_dir():
+            shutil.rmtree(d)
+    for name, ls in out.items():
+        merged = prune(ls)
+        write_taste_md(base / name / "taste.md", name, "project", merged)
+    print(f"✓ consolidated {len(pkgs)} -> {len(out)} packages "
+          f"({survived}/{total} learnings kept)")
+    for name in sorted(out):
+        print(f"  {name}: {len(out[name])}")
+    return 0
+
+
 def cmd_backfill(args):
     """Read ALL Shelley conversations (or one --conversation) and distill
     taste into each conversation's repo. Groups conversations by taste root,
@@ -904,6 +993,7 @@ def cmd_backfill(args):
         root, chunk = job
         prompt = DISTILL_PROMPT.format(
             cap=MAX_LEARNINGS_PER_RUN,
+            maxpkgs=MAX_PACKAGES,
             seed=", ".join(SEED_PACKAGES + sorted(
                 set(collect(taste_base(root))) | set(collect(GLOBAL_DIR)))),
             project=project_context(root),
@@ -1314,6 +1404,10 @@ def main(argv=None):
     s = sub.add_parser("import", help="import a Command Code store (.commandcode/taste)")
     s.add_argument("path", help="path to the .commandcode/taste directory")
     s.set_defaults(func=cmd_import)
+
+    s = sub.add_parser("consolidate", help=f"re-bucket learnings into <= {MAX_PACKAGES} packages (LLM)")
+    s.add_argument("--force", action="store_true", help="consolidate even when under the cap")
+    s.set_defaults(func=cmd_consolidate)
 
     s = sub.add_parser("backfill", help="distill taste from ALL shelley conversations into their repos")
     s.add_argument("--conversation", help="single conversation id instead of all")
