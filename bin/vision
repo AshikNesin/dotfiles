@@ -16,8 +16,10 @@ Usage:
   vision --json shot.png                      # agent-friendly output
   vision --probe                              # test which models see images
 
+Defaults to gpt-5.6-luna with xhigh reasoning effort for careful reading.
+
 Config: ~/.config/vision/config.json  ({"model":..., "base_url":..., "api_key":...})
-Env:    VISION_MODEL, VISION_BASE_URL, VISION_API_KEY, VISION_TIMEOUT
+Env:    VISION_MODEL, VISION_REASONING_EFFORT, VISION_BASE_URL, VISION_API_KEY, VISION_TIMEOUT
 
 Backends (explicit VISION_BASE_URL wins; otherwise first that works):
   1. https://llm.int.exe.xyz/v1             (exe.dev gateway, no key needed)
@@ -39,12 +41,15 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_MODEL = "gpt-5.6-terra"
+DEFAULT_MODEL = "gpt-5.6-luna"
+DEFAULT_REASONING = os.environ.get("VISION_REASONING_EFFORT", "xhigh")
+# Thinking tokens share the completion budget, so leave room to think AND answer.
+MAX_COMPLETION_TOKENS = 16384
 
 # Curated vision-capable candidates on the exe.dev gateway. --probe verifies.
 CURATED_MODELS = [
-    "gpt-5.6-terra",
     "gpt-5.6-luna",
+    "gpt-5.6-terra",
     "gpt-5.6-sol",
     "gpt-5.4-mini",
     "gpt-5.4-nano",
@@ -205,7 +210,7 @@ def extract_answer(resp):
     return ""
 
 
-def call_model(model, base, api_key, timeout, parts, question, max_attempts=2):
+def call_model(model, base, api_key, timeout, parts, question, reasoning=DEFAULT_REASONING, max_attempts=2):
     """POST /chat/completions. Returns (answer, usage, model, base_used)."""
     payload = {
         "model": model,
@@ -213,8 +218,10 @@ def call_model(model, base, api_key, timeout, parts, question, max_attempts=2):
             {"role": "system", "content": VISION_SYSTEM},
             {"role": "user", "content": parts + [{"type": "text", "text": question}]},
         ],
-        "max_completion_tokens": 2048,
+        "max_completion_tokens": MAX_COMPLETION_TOKENS,
     }
+    if reasoning:
+        payload["reasoning_effort"] = reasoning
     body = json.dumps(payload).encode()
 
     bases = [base] if base else list(FALLBACK_BASES)
@@ -276,7 +283,7 @@ def cmd_probe(args):
     for m in models:
         parts = [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{TINY_PNG}"}}]
         try:
-            _, _, _, used_base = call_model(m, base, api_key, min(timeout, 30), parts, "Reply with exactly: OK", max_attempts=1)
+            _, _, _, used_base = call_model(m, base, api_key, min(timeout, 30), parts, "Reply with exactly: OK", reasoning=None, max_attempts=1)  # probe tests raw vision, not thinking
             print(f"  \u2713 {m:<24} ({used_base})")
             ok.append(m)
         except SystemExit:
@@ -313,7 +320,7 @@ def main():
     args = ap.parse_args()
 
     if args.version:
-        print("vision 1.0.0")
+        print("vision 1.1.0")
         return
     if args.list:
         return cmd_list(args)
@@ -360,6 +367,7 @@ def main():
         print(json.dumps({
             "tool": "vision",
             "model": model_used,
+            "reasoning_effort": DEFAULT_REASONING,
             "backend": base_used,
             "question": question,
             "images": meta,
