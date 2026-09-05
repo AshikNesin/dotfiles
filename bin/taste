@@ -56,8 +56,11 @@ DEFAULT_BASE = "https://llm.int.exe.xyz/v1"
 DEFAULT_MODEL = "fireworks/glm-5p3-flash"
 FALLBACK_MODELS = ["fireworks/glm-5p3-flash", "fireworks/deepseek-v4-flash-0731"]
 
-PACKAGES = ["general", "code-style", "architecture", "testing",
-            "git", "workflow", "tools", "docs"]
+SEED_PACKAGES = ["general", "code-style", "architecture", "testing", "git",
+                 "workflow", "docs"]
+# Existing dirs also become valid targets; new names are LLM-invented from
+# project context (e.g. "android", "react", "sql"), constrained to this shape.
+PKG_SHAPE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")
 MAX_LEARNINGS_PER_RUN = 10
 MAX_LEARNINGS_PER_PKG = 40
 MIN_CONFIDENCE = 0.25
@@ -145,9 +148,11 @@ def pkg_dir(pkg, scope, cwd):
 
 # ------------------------------------------------------- taste.md parsing --
 
+# Optional legacy tail: "(learned 2026-09-04, conv cXXXX)" — still parsed,
+# never written.
 LEARNING_RE = re.compile(
-    r"^\s*-\s*\[([0-9]*\.?[0-9]+)\]\s*(.+?)\s*"
-    r"\(learned\s+(\d{4}-\d{2}-\d{2})(?:,\s*conv\s+(\S+))?\)\s*$")
+    r"^\s*-\s*\[([0-9]*\.?[0-9]+)\]\s*(.+?)\s*(?:\(learned\s+\d{4}-\d{2}-\d{2}"
+    r"(?:,\s*conv\s+\S+)?\))?\s*$")
 
 
 class Learning:
@@ -160,12 +165,7 @@ class Learning:
         self.conv = conv
 
     def line(self):
-        tail = f"(learned {self.date}"
-        if self.conv:
-            tail += f", conv {self.conv})"
-        else:
-            tail += ")"
-        return f"- [{self.conf:.2f}] {self.text} {tail}"
+        return f"- [{self.conf:.2f}] {self.text}"
 
 
 def parse_taste_md(path):
@@ -176,7 +176,7 @@ def parse_taste_md(path):
             for line in f:
                 m = LEARNING_RE.match(line)
                 if m:
-                    out.append(Learning(m.group(2), float(m.group(1)), m.group(3), m.group(4)))
+                    out.append(Learning(m.group(2), float(m.group(1))))
     except OSError:
         pass
     return out
@@ -189,8 +189,7 @@ def write_taste_md(path, pkg, scope, learnings):
         f"# taste: {pkg} ({where})\n\n"
         "Learned preferences for how this user wants work done. Edit freely\n"
         "by hand — the learner merges around manual edits. Format:\n"
-        "`- [confidence 0-1] preference (learned YYYY-MM-DD)`.\n"
-        "Validate with `taste lint`.\n\n"
+        "`- [confidence 0-1] preference`. Validate with `taste lint`.\n\n"
     )
     body = "\n".join(l.line() for l in learnings)
     tmp = path.with_suffix(".tmp")
@@ -396,7 +395,7 @@ def llm_complete(prompt):
 DISTILL_PROMPT = """You distill durable user preferences ("taste") from a coding-agent conversation.
 
 Return ONLY JSON, no prose, no markdown fences:
-{{"learnings": [{{"text": "...", "package": "general|code-style|architecture|testing|git|workflow|tools|docs", "confidence": 0.0-1.0}}], "notes": "one line, may be empty"}}
+{{"learnings": [{{"text": "...", "package": "...", "confidence": 0.0-1.0}}], "notes": "one line, may be empty"}}
 
 COUNTS as taste (how the user wants work done, durably):
 - explicit directives: "always run tests before committing", "never use tabs"
@@ -409,16 +408,70 @@ DOES NOT COUNT:
 - secrets, credentials, tokens, URLs with keys (never reproduce them)
 - anything already covered by the existing learnings below (return it again only to REINFORCE it with higher confidence when the user repeated it emphatically)
 
-Rules: text <= 200 chars, imperative voice, self-contained; package "general" only if it applies to ANY project; at most {cap} learnings; confidence 0.9+ only for unmistakable explicit directives.
+PACKAGES are dynamic: pick or invent short, lowercase, hyphenated category names
+that fit THIS project and the preference (existing names plus these seeds: {seed}).
+Examples: android, react, sql, api-design, error-handling, commit-style, testing.
+Use "general" only when a preference truly applies to ANY project.
 
-Existing learnings (project):
+Rules: text <= 200 chars, imperative voice, self-contained; at most {cap} learnings; confidence 0.9+ only for unmistakable explicit directives.
+
+Project context:
 {project}
 
+Existing learnings (project):
+{project_learnings}
+
 Existing learnings (global):
-{global_}
+{global_learnings}
 
 Conversation:
 {transcript}"""
+
+
+def project_context(root):
+    """Cheap fingerprint of a project so the distiller can invent fitting
+    package names ("android", "react", "sql", ...). Never raises."""
+    if not root or not Path(root).is_dir():
+        return "(unknown project)"
+    root = Path(root)
+    hints = []
+    markers = {
+        "android": ["settings.gradle", "settings.gradle.kts", "app/build.gradle*",
+                    "gradlew", "**/AndroidManifest.xml"],
+        "ios": ["*.xcodeproj", "Podfile", "*.xcworkspace"],
+        "flutter": ["pubspec.yaml"],
+        "next": ["next.config.*"],
+        "vue": ["vite.config.*", "nuxt.config.*"],
+        "svelte": ["svelte.config.*"],
+        "react": ["package.json"],
+        "go": ["go.mod"],
+        "rust": ["Cargo.toml"],
+        "python": ["pyproject.toml", "setup.py", "requirements.txt"],
+    }
+    for name, pats in markers.items():
+        if any(_glob(root, p) for p in pats):
+            hints.append("ecosystem: " + name)
+            break
+    try:
+        names = sorted(p.name for p in root.iterdir())[:30]
+        hints.append("top-level: " + ", ".join(names))
+    except OSError:
+        pass
+    try:
+        out = subprocess.run(["git", "-C", str(root), "remote", "get-url", "origin"],
+                             capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            hints.append("remote: " + scrub(out.stdout.strip()))
+    except Exception:
+        pass
+    return "\n".join(hints)
+
+
+def _glob(root, pattern):
+    try:
+        return next(root.glob(pattern), None)
+    except (OSError, StopIteration):
+        return None
 
 
 def parse_llm_json(raw):
@@ -454,7 +507,7 @@ def sanitize_incoming(items):
             conf = 0.6
         if not text or len(text) > MAX_TEXT_LEN or len(text) < 8:
             continue
-        if pkg not in PACKAGES:
+        if not PKG_SHAPE.match(pkg):
             pkg = "general"
         if any(similar(text, s) for s in seen):
             continue
@@ -506,8 +559,10 @@ def learn(conv_id, dry_run=False):
 
         prompt = DISTILL_PROMPT.format(
             cap=MAX_LEARNINGS_PER_RUN,
-            project=format_existing(project_pkgs) or "(none)",
-            global_=format_existing(global_pkgs) or "(none)",
+            seed=", ".join(SEED_PACKAGES + sorted(set(project_pkgs) | set(global_pkgs))),
+            project=project_context(root),
+            project_learnings=format_existing(project_pkgs) or "(none)",
+            global_learnings=format_existing(global_pkgs) or "(none)",
             transcript=render_transcript(lines),
         )
         raw = llm_complete(prompt)
@@ -714,8 +769,12 @@ def cmd_list(args):
         return 0
     total = 0
     for name, ls in sorted(pkgs.items()):
-        newest = max(l.date for l in ls) if ls else "-"
-        print(f"{name:<14} {len(ls):>3} learnings  updated {newest}  ({scope})")
+        md = base / name / "taste.md"
+        try:
+            updated = datetime.date.fromtimestamp(md.stat().st_mtime).isoformat()
+        except OSError:
+            updated = "-"
+        print(f"{name:<14} {len(ls):>3} learnings  updated {updated}  ({scope})")
         total += len(ls)
     print(f"Total: {len(pkgs)} packages, {total} learnings")
     return 0
@@ -949,7 +1008,7 @@ def main(argv=None):
 
     s = sub.add_parser("note", help="add a learning by hand")
     s.add_argument("text", nargs="+")
-    s.add_argument("--package", default="general", choices=PACKAGES)
+    s.add_argument("--package", default="general")
     s.add_argument("--confidence", type=float, default=0.85)
     s.set_defaults(func=cmd_note)
 
