@@ -37,6 +37,6 @@ elif [ -x "$HOME/dotfiles/bin/taste" ]; then
   _taste_bin="$HOME/dotfiles/bin/taste"
 fi
 if [ -n "$_taste_bin" ]; then
-  mkdir -p "${TASTE_STATE_DIR:-$HOME/.cache/shelley-taste}"
+  mkdir -p "${TASTE_STATE_DIR:-$HOME/.cache/taste}"
   setsid "$_taste_bin" learn "$conv_id" >/dev/null 2>&1 <&- &
 fi

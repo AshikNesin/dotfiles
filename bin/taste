@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
-"""taste — learned user preferences for the Shelley coding agent.
+"""taste — learned user preferences for coding agents (harness-agnostic).
 
 A local, git-native re-implementation of Command Code's Taste feature
-(https://commandcode.ai/docs/taste), built on Shelley lifecycle hooks:
+(https://commandcode.ai/docs/taste). The core is harness-neutral:
+transcript in → learnings out. Harness adapters source transcripts.
 
-  learn    end-of-turn hook spawns `taste learn <conv>`; the distiller reads
-           the conversation transcript from Shelley's SQLite DB, side-calls a
-           cheap LLM to extract durable preferences, and merges them into
-           per-package taste.md files (dedup + confidence updates).
-  render   system-prompt hook appends `taste render` output so every session
-           (main + subagents) starts with the user's taste profile.
-  control  /taste slash panel + this CLI: enable/disable, list, lint, note,
-           forget, push/pull between project and global scopes.
+  distill   generic entry point: transcript JSON on stdin -> learnings JSON
+            on stdout (--merge to also write them into the store). Any
+            harness (Claude Code, Cursor, aider, ccusage...) can drive it:
+              taste distill --merge < transcript.json
+  learn     with a conversation id: the SHELLEY adapter (reads the
+            transcript from Shelley's SQLite DB); with --transcript: generic.
+  render    tiered prompt injection (core / matched / indexed) — harness-
+            neutral text, any agent can append it to its system prompt.
+  import    pull an existing Command Code store (.commandcode/taste/)
+            into this one — the file format is identical, so files round-trip.
+  migrate   move legacy .shelley/taste stores to the neutral layout.
 
-Storage (packages of learnings, human-editable markdown):
-  project  <git-root>/.shelley/taste/<pkg>/taste.md     (commit for the team)
-  global   ~/.config/shelley/taste/<pkg>/taste.md       (follows you around)
+Storage (CC-compatible markdown: '# <pkg>' + '- text. Confidence: 0.7'):
+  project  <git-root>/.taste/<pkg>/taste.md        (commit for the team)
+  global   ~/.config/taste/<pkg>/taste.md          (follows you around)
 
 Settings precedence (tasteLearning true/false, default on):
-  1. <root>/.shelley/settings.local.json   personal, not committed
-  2. <root>/.shelley/settings.json         committed, shared with the team
-  3. ~/.config/shelley/config.json         user-level default
+  1. <root>/.taste/settings.local.json    personal, not committed
+  2. <root>/.taste/settings.json          committed, shared with the team
+  3. ~/.config/taste/config.json          user-level default
+  (legacy .shelley/settings*.json still honored on read)
 
 Env: TASTE_DISABLE=1 (kill switch), TASTE_DB (Shelley sqlite path),
      TASTE_MODEL / TASTE_BASE_URL / TASTE_API_KEY (distiller LLM),
@@ -35,6 +40,7 @@ import difflib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -44,11 +50,11 @@ import urllib.request
 from pathlib import Path
 
 HOME = Path(os.environ.get("HOME", str(Path.home())))
-GLOBAL_DIR = HOME / ".config" / "shelley" / "taste"
-USER_CONFIG = HOME / ".config" / "shelley" / "config.json"
-TASTE_CONFIG = HOME / ".config" / "shelley" / "taste" / "config.json"
+GLOBAL_DIR = Path(os.environ.get("TASTE_GLOBAL_DIR", HOME / ".config" / "taste"))
+USER_CONFIG = Path(os.environ.get("TASTE_USER_CONFIG", HOME / ".config" / "taste" / "config.json"))
+TASTE_CONFIG = GLOBAL_DIR / "config.json"
 CACHE_DIR = Path(os.environ.get("TASTE_STATE_DIR",
-                                HOME / ".cache" / "shelley-taste"))
+                                HOME / ".cache" / "taste"))
 LOG_PATH = Path(os.environ.get("TASTE_LOG", CACHE_DIR / "log"))
 DEFAULT_DB = HOME / ".config" / "shelley" / "shelley.db"
 
@@ -101,15 +107,24 @@ def git_root(cwd):
 
 def project_root(cwd):
     """Directory anchoring project taste: nearest ancestor (incl. cwd)
-    containing .shelley, bounded by the git root; else the git root; else cwd."""
+    containing .taste (or legacy .shelley), bounded by the git root; else the
+    git root; else cwd."""
     cwd = Path(cwd).resolve()
     root = git_root(cwd) or cwd
     for d in [cwd, *cwd.parents]:
-        if (d / ".shelley").is_dir():
+        if (d / ".taste").is_dir() or (d / ".shelley").is_dir():
             return d
         if d == root:
             break
     return root
+
+
+def taste_base(root):
+    """Taste store dir for a project root: .taste if present (or to be
+    created), else legacy .shelley/taste if that exists."""
+    if (root / ".taste").is_dir() or not (root / ".shelley" / "taste").is_dir():
+        return root / ".taste"
+    return root / ".shelley" / "taste"
 
 
 def read_setting(path):
@@ -121,16 +136,22 @@ def read_setting(path):
 
 
 def enabled_for(cwd, default=True):
-    """Settings precedence: settings.local > settings > user config > default."""
+    """Settings precedence: settings.local > settings > user config > default.
+    Reads legacy .shelley settings too, so nothing silently flips."""
     if os.environ.get("TASTE_DISABLE") == "1":
         return False
     if cwd:
         root = project_root(cwd)
-        for name in ("settings.local.json", "settings.json"):
-            v = read_setting(root / ".shelley" / name)
-            if v is not None:
-                return bool(v)
+        for base in (root / ".taste", root / ".shelley"):
+            for name in ("settings.local.json", "settings.json"):
+                v = read_setting(base / name)
+                if v is not None:
+                    return bool(v)
     v = read_setting(USER_CONFIG)
+    if v is not None:
+        return bool(v)
+    # legacy user-level location
+    v = read_setting(HOME / ".config" / "shelley" / "config.json")
     if v is not None:
         return bool(v)
     return default
@@ -142,17 +163,20 @@ VALID_PKG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 def pkg_dir(pkg, scope, cwd):
     if not VALID_PKG.match(pkg or ""):
         return None
-    base = project_root(cwd) / ".shelley" / "taste" if scope == "project" else GLOBAL_DIR
+    base = taste_base(project_root(cwd)) if scope == "project" else GLOBAL_DIR
     return base / pkg
 
 
 # ------------------------------------------------------- taste.md parsing --
 
-# Optional legacy tail: "(learned 2026-09-04, conv cXXXX)" — still parsed,
-# never written.
+# Lines are Command Code format: "- <text>. Confidence: 0.65" (confidence
+# suffix optional but anchored to EOL; legacy "- [0.65] text" and
+# "(learned DATE)" tails still parse).
 LEARNING_RE = re.compile(
-    r"^\s*-\s*\[([0-9]*\.?[0-9]+)\]\s*(.+?)\s*(?:\(learned\s+\d{4}-\d{2}-\d{2}"
-    r"(?:,\s*conv\s+\S+)?\))?\s*$")
+    r"^\s*-\s*(?:\[([0-9]*\.?[0-9]+)\]\s*)?(.+?)\s*"
+    r"(?:\.?\s*Confidence:\s*([0-9]*\.?[0-9]+)\s*)?$")
+TAIL_RE = re.compile(
+    r"\s*\(learned\s+\d{4}-\d{2}-\d{2}(?:,\s*conv\s+\S+)?\)\s*$")
 
 
 class Learning:
@@ -165,18 +189,23 @@ class Learning:
         self.conv = conv
 
     def line(self):
-        return f"- [{self.conf:.2f}] {self.text}"
+        return f"- {self.text}. Confidence: {self.conf:.2f}"
 
 
 def parse_taste_md(path):
-    """Parse learnings from a taste.md; ignores headers/prose/comments."""
+    """Parse learnings from a taste.md (Command Code format). Ignores
+    headers/prose/comments; accepts legacy bracket and (learned ...) forms."""
     out = []
     try:
         with open(path) as f:
             for line in f:
-                m = LEARNING_RE.match(line)
-                if m:
-                    out.append(Learning(m.group(2), float(m.group(1))))
+                m = LEARNING_RE.match(line.rstrip("\n"))
+                if not m:
+                    continue
+                text = TAIL_RE.sub("", m.group(2)).strip()
+                conf = m.group(3) or m.group(1) or "0.6"
+                if text:
+                    out.append(Learning(text, float(conf)))
     except OSError:
         pass
     return out
@@ -184,16 +213,10 @@ def parse_taste_md(path):
 
 def write_taste_md(path, pkg, scope, learnings):
     path.parent.mkdir(parents=True, exist_ok=True)
-    where = "project" if scope == "project" else "global"
-    header = (
-        f"# taste: {pkg} ({where})\n\n"
-        "Learned preferences for how this user wants work done. Edit freely\n"
-        "by hand — the learner merges around manual edits. Format:\n"
-        "`- [confidence 0-1] preference`. Validate with `taste lint`.\n\n"
-    )
+    header = f"# {pkg}\n"
     body = "\n".join(l.line() for l in learnings)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(header + (body + "\n" if body else ""))
+    tmp.write_text(header + ("\n" + body + "\n" if body else ""))
     os.replace(tmp, path)
 
 
@@ -536,7 +559,8 @@ def write_state(conv_id, seq):
 
 
 def learn(conv_id, dry_run=False):
-    """The background learner. Fail-open by design."""
+    """SHELLEY adapter: transcript from Shelley's SQLite DB -> core distiller.
+    Fail-open by design."""
     db = open_db()
     if db is None:
         log(f"{conv_id}: no db")
@@ -545,18 +569,15 @@ def learn(conv_id, dry_run=False):
         cwd, _model = fetch_conversation(db, conv_id)
         last = read_state(conv_id)
         lines, max_seq = fetch_transcript(db, conv_id, last)
+        write_state(conv_id, max_seq)  # advance even on skip/upstream failure
         if not lines:
-            write_state(conv_id, max_seq)
             return 0
         if not enabled_for(cwd if cwd else None):
-            write_state(conv_id, max_seq)
             log(f"{conv_id}: taste disabled for {cwd}")
             return 0
-
         root = project_root(cwd) if cwd else None
-        project_pkgs = collect(root / ".shelley" / "taste") if root else {}
+        project_pkgs = collect(taste_base(root)) if root else {}
         global_pkgs = collect(GLOBAL_DIR)
-
         prompt = DISTILL_PROMPT.format(
             cap=MAX_LEARNINGS_PER_RUN,
             seed=", ".join(SEED_PACKAGES + sorted(set(project_pkgs) | set(global_pkgs))),
@@ -567,7 +588,6 @@ def learn(conv_id, dry_run=False):
         )
         raw = llm_complete(prompt)
         items = sanitize_incoming(parse_llm_json(raw))
-        write_state(conv_id, max_seq)  # advance even on upstream failure
         if not items:
             log(f"{conv_id}: nothing learned ({'no llm' if not raw else 'filtered'})")
             return 0
@@ -575,33 +595,7 @@ def learn(conv_id, dry_run=False):
             for it in items:
                 print(f"would add [{it['package']}:{it['confidence']:.2f}] {it['text']}")
             return 0
-
-        today = datetime.date.today().isoformat()
-        report = []
-        for scope, pkgs in (("project", project_pkgs), ("global", global_pkgs)):
-            by_pkg = {}
-            for it in items:
-                # generic learnings go global; specific ones go project
-                if scope == "global" and not (it["package"] == "general" and it["confidence"] < 0.85):
-                    continue
-                if scope == "project" and it["package"] == "general" and it["confidence"] < 0.85:
-                    continue
-                by_pkg.setdefault(it["package"], []).append(
-                    Learning(it["text"], it["confidence"], conv=conv_id))
-            for pkg, inc in by_pkg.items():
-                base = (root / ".shelley" / "taste") if scope == "project" else GLOBAL_DIR
-                existing = pkgs.get(pkg, [])
-                added, updated, unchanged = merge_learnings(existing, inc, conv=conv_id)
-                merged = prune(existing)
-                if merged or added:
-                    write_taste_md(base / pkg / "taste.md", pkg, scope, merged)
-                for l in added:
-                    report.append(f"+ [{scope}/{pkg}] {l.text}")
-                for l, before in updated:
-                    report.append(f"~ [{scope}/{pkg}] {l.text} ({before:.2f}->{l.conf:.2f})")
-        log(f"{conv_id}: learned {len(report)} change(s)")
-        for r in report:
-            print(r)
+        report = apply_learnings(items, root, source=conv_id)
         if not report:
             print(f"taste: reinforced {len(items)} existing learning(s) (no change)")
         return 0
@@ -677,7 +671,7 @@ def render(cwd, budget=None, fmt="text"):
     terms = match_terms(cwd) if Path(cwd).is_dir() else set()
     entries = []  # (scope, pkg, conf, text)
     for scope, base in (("global", GLOBAL_DIR),
-                        ("project", project_root(cwd) / ".shelley" / "taste")):
+                        ("project", taste_base(project_root(cwd)))):
         for pkg, ls in collect(base).items():
             for l in ls:
                 entries.append((scope, pkg, l.conf, l.text))
@@ -745,7 +739,150 @@ def render(cwd, budget=None, fmt="text"):
 # ------------------------------------------------------------------- CLI --
 
 
-def cmd_learn(args):
+def distill_transcript(lines, cwd=None, dry_run=False):
+    """Harness-neutral core: transcript lines [(role, text)] -> learnings.
+    Optionally merge into the store rooted at cwd."""
+    root = project_root(cwd) if cwd else None
+    project_pkgs = collect(taste_base(root)) if root else {}
+    global_pkgs = collect(GLOBAL_DIR)
+    prompt = DISTILL_PROMPT.format(
+        cap=MAX_LEARNINGS_PER_RUN,
+        seed=", ".join(SEED_PACKAGES + sorted(set(project_pkgs) | set(global_pkgs))),
+        project=project_context(root),
+        project_learnings=format_existing(project_pkgs) or "(none)",
+        global_learnings=format_existing(global_pkgs) or "(none)",
+        transcript=render_transcript(lines),
+    )
+    raw = llm_complete(prompt)
+    items = sanitize_incoming(parse_llm_json(raw))
+    if not items:
+        log(f"distill: nothing learned ({'no llm' if not raw else 'filtered'})")
+        return []
+    if dry_run or not cwd:
+        return items
+    apply_learnings(items, root, source="distill")
+    return items
+
+
+def apply_learnings(items, root, source="learn"):
+    """Merge sanitized learning dicts into project/global stores."""
+    report = []
+    for scope, pkgs in (("project", collect(taste_base(root)) if root else {}),
+                        ("global", collect(GLOBAL_DIR))):
+        by_pkg = {}
+        for it in items:
+            if scope == "global" and not (it["package"] == "general" and it["confidence"] < 0.85):
+                continue
+            if scope == "project" and it["package"] == "general" and it["confidence"] < 0.85:
+                continue
+            by_pkg.setdefault(it["package"], []).append(
+                Learning(it["text"], it["confidence"]))
+        for pkg, inc in by_pkg.items():
+            base = taste_base(root) if scope == "project" else GLOBAL_DIR
+            existing = pkgs.get(pkg, [])
+            added, updated, unchanged = merge_learnings(existing, inc)
+            merged = prune(existing)
+            if merged or added:
+                write_taste_md(base / pkg / "taste.md", pkg, scope, merged)
+            for l in added:
+                report.append(f"+ [{scope}/{pkg}] {l.text}")
+            for l, before in updated:
+                report.append(f"~ [{scope}/{pkg}] {l.text} ({before:.2f}->{l.conf:.2f})")
+    log(f"{source}: {len(report)} change(s)")
+    for r in report:
+        print(r)
+    return report
+
+
+def cmd_distill(args):
+    """Generic harness entry: transcript JSON on stdin -> learnings JSON.
+    Input: {"cwd": ".", "messages": [{"role": "user|assistant|tool", "text": "..."}]}
+    Output: {"learnings": [{"text", "package", "confidence"}], "changed": bool}
+    --merge writes them into the store (otherwise stdout only)."""
+    try:
+        data = json.load(sys.stdin)
+    except ValueError as e:
+        die(f"invalid JSON on stdin: {e}")
+    cwd = data.get("cwd") or args.cwd or os.getcwd()
+    msgs = data.get("messages") or []
+    if not msgs:
+        die("no messages in input")
+    lines = []
+    for m in msgs:
+        role = str(m.get("role", "user")).lower()
+        text = str(m.get("text", "")).strip()
+        who = {"user": "USER", "assistant": "AGENT", "agent": "AGENT",
+               "tool": "TOOL", "system": "TOOL"}.get(role)
+        if who and text:
+            lines.append((who, text))
+    if sum(len(t) for w, t in lines if w == "USER") < 60:
+        print(json.dumps({"learnings": [], "changed": False,
+                          "notes": "no meaningful user input"}))
+        return 0
+    if not enabled_for(cwd):
+        print(json.dumps({"learnings": [], "changed": False, "notes": "disabled"}))
+        return 0
+    items = distill_transcript(lines, cwd=cwd, dry_run=not args.merge)
+    print(json.dumps({"learnings": [
+        {"text": i["text"], "package": i["package"], "confidence": round(i["confidence"], 2)}
+        for i in items], "changed": bool(args.merge and items)}, indent=2))
+    return 0
+
+
+def cmd_import(args):
+    """Import a Command Code store (.commandcode/taste/) — same file format,
+    so files are read and merged package by package."""
+    cwd = args.cwd or os.getcwd()
+    src = Path(args.path).expanduser().resolve()
+    if not src.is_dir():
+        die(f"not a directory: {src}")
+    root = project_root(cwd)
+    dst_base = taste_base(root)
+    n_add = n_upd = files = 0
+    for d in sorted(src.iterdir()):
+        if not d.is_dir() or not VALID_PKG.match(d.name):
+            continue
+        incoming = parse_taste_md(d / "taste.md")
+        if not incoming:
+            continue
+        files += 1
+        existing = parse_taste_md(dst_base / d.name / "taste.md")
+        added, updated, _ = merge_learnings(existing, incoming)
+        merged = prune(existing)
+        write_taste_md(dst_base / d.name / "taste.md", d.name, "project", merged)
+        n_add += len(added); n_upd += len(updated)
+    print(f"✓ imported {files} package(s) into {dst_base} "
+          f"({n_add} added, {n_upd} reinforced)")
+    return 0
+
+
+def cmd_migrate(args):
+    """Move legacy .shelley/taste stores to the neutral .taste layout."""
+    cwd = args.cwd or os.getcwd()
+    moved = 0
+    for legacy, new in ((project_root(cwd) / ".shelley" / "taste", project_root(cwd) / ".taste"),
+                        (HOME / ".config" / "shelley" / "taste", GLOBAL_DIR)):
+        if not legacy.is_dir() or not any(legacy.iterdir()):
+            continue
+        for d in sorted(legacy.iterdir()):
+            if not d.is_dir() or not VALID_PKG.match(d.name):
+                continue
+        # merge old into new, then remove old if fully absorbed
+        incoming = {dd.name: parse_taste_md(dd / "taste.md")
+                    for dd in sorted(legacy.iterdir()) if dd.is_dir()}
+        for pkg, ls in incoming.items():
+            existing = parse_taste_md(new / pkg / "taste.md")
+            merge_learnings(existing, ls)
+            write_taste_md(new / pkg / "taste.md", pkg, "global" if "config" in str(new) else "project", prune(existing))
+            moved += 1
+        shutil.rmtree(legacy)
+        print(f"✓ migrated {legacy} -> {new}")
+    if not moved:
+        print("nothing to migrate")
+    return 0
+
+
+def cmd_learn_cli(args):
     lock = CACHE_DIR / "learner.lock"
     lock.parent.mkdir(parents=True, exist_ok=True)
     import fcntl
@@ -772,7 +909,7 @@ def cmd_cat(args):
     if not VALID_PKG.match(pkg or ""):
         die(f"invalid package name: {pkg!r}")
     out = []
-    for scope, base in (("project", project_root(cwd) / ".shelley" / "taste"),
+    for scope, base in (("project", taste_base(project_root(cwd))),
                         ("global", GLOBAL_DIR)):
         ls = parse_taste_md(base / pkg / "taste.md")
         if ls:
@@ -799,12 +936,12 @@ def cmd_status(args):
     on = enabled_for(cwd)
     cfg = llm_config()
     print(f"taste learning : {'ON' if on else 'OFF'} for {root}")
-    print(f"project dir    : {root / '.shelley' / 'taste'}")
+    print(f"project dir    : {taste_base(root)}")
     print(f"global dir     : {GLOBAL_DIR}")
     print(f"distiller      : {cfg['model']} @ {cfg['base']}")
     print(f"db             : {os.environ.get('TASTE_DB', DEFAULT_DB)}")
     total = 0
-    for scope, base in (("project", root / ".shelley" / "taste"), ("global", GLOBAL_DIR)):
+    for scope, base in (("project", taste_base(root)), ("global", GLOBAL_DIR)):
         pkgs = collect(base)
         n = sum(len(v) for v in pkgs.values())
         total += n
@@ -838,17 +975,19 @@ def cmd_enable(args):
               f"({USER_CONFIG}) — affects all projects")
     else:
         root = project_root(args.cwd or os.getcwd())
-        local = root / ".shelley" / "settings.local.json"
+        local = taste_base(root).parent / "settings.local.json"
+        if not (root / ".taste").is_dir() and (root / ".shelley" / "taste").is_dir():
+            local = root / ".shelley" / "settings.local.json"
         _set_setting(local, value)
         print(f"taste learning {'enabled' if value else 'disabled'} for this project ({local})")
         if not value:
-            print("tip: add .shelley/settings.local.json to .gitignore — it is personal")
+            print(f"tip: add {local.name} under the store dir to .gitignore — it is personal")
     return 0
 
 
 def cmd_list(args):
     cwd = args.cwd or os.getcwd()
-    base = GLOBAL_DIR if args.global_scope else project_root(cwd) / ".shelley" / "taste"
+    base = GLOBAL_DIR if args.global_scope else taste_base(project_root(cwd))
     scope = "global" if args.global_scope else "project"
     pkgs = collect(base)
     if not pkgs:
@@ -881,14 +1020,15 @@ def _lint_one(path):
             continue
         if s.startswith("-"):
             m = LEARNING_RE.match(line)
-            if not m:
-                errors.append(f"Line {i}: malformed learning line")
+            if not m or not (m.group(3) or m.group(1)):
+                errors.append(f"Line {i}: missing 'Confidence: N' suffix")
                 continue
             n += 1
-            conf = float(m.group(1))
+            conf = float(m.group(3) or m.group(1))
             if not 0.0 <= conf <= 1.0:
                 errors.append(f"Line {i}: confidence must be 0-1")
-            if len(m.group(2)) > MAX_TEXT_LEN:
+            text = TAIL_RE.sub("", m.group(2)).strip()
+            if len(text) > MAX_TEXT_LEN:
                 warnings.append(f"Line {i}: text longer than {MAX_TEXT_LEN} chars")
         elif re.match(r"^-\s*\[", s):
             errors.append(f"Line {i}: malformed learning line")
@@ -903,7 +1043,7 @@ def cmd_lint(args):
     if args.global_scope:
         bases.append(("global", GLOBAL_DIR))
     else:
-        bases.append(("project", project_root(cwd) / ".shelley" / "taste"))
+        bases.append(("project", taste_base(project_root(cwd))))
     files = []
     for scope, base in bases:
         if args.package:
@@ -935,7 +1075,7 @@ def cmd_lint(args):
 
 def cmd_open(args):
     cwd = args.cwd or os.getcwd()
-    base = GLOBAL_DIR if args.global_scope else project_root(cwd) / ".shelley" / "taste"
+    base = GLOBAL_DIR if args.global_scope else taste_base(project_root(cwd))
     path = base / args.package / "taste.md"
     if not path.exists():
         die(f"no such package: {args.package} ({path})")
@@ -954,7 +1094,7 @@ def cmd_note(args):
     if len(text) > MAX_TEXT_LEN:
         die(f"note too long (>{MAX_TEXT_LEN} chars)")
     inc = [{"text": text, "package": args.package, "confidence": args.confidence}]
-    base = GLOBAL_DIR if args.global_scope else project_root(cwd) / ".shelley" / "taste"
+    base = GLOBAL_DIR if args.global_scope else taste_base(project_root(cwd))
     existing = parse_taste_md(base / args.package / "taste.md")
     added, updated, _ = merge_learnings(existing, inc)
     merged = prune(existing)
@@ -972,7 +1112,7 @@ def cmd_forget(args):
     cwd = args.cwd or os.getcwd()
     pat = " ".join(args.pattern).strip().lower()
     removed = 0
-    for base in (project_root(cwd) / ".shelley" / "taste", GLOBAL_DIR):
+    for base in (taste_base(project_root(cwd)), GLOBAL_DIR):
         for pkg, ls in collect(base).items():
             keep = [l for l in ls if pat not in normalize(l.text)]
             if len(keep) != len(ls):
@@ -1001,9 +1141,9 @@ def _merge_pkg(src_dir, dst_dir, pkg, scope):
 
 def cmd_push_pull(args):
     """push: project -> global. pull: global -> project.
-    Team/remote sharing rides on git: commit .shelley/taste/."""
+    Team/remote sharing rides on git: commit the taste store dir (.taste/)."""
     cwd = args.cwd or os.getcwd()
-    proj = project_root(cwd) / ".shelley" / "taste"
+    proj = taste_base(project_root(cwd))
     pulling = args.command_pull
     src_dir, dst_dir = (GLOBAL_DIR, proj) if pulling else (proj, GLOBAL_DIR)
     if not src_dir.is_dir():
@@ -1023,7 +1163,7 @@ def cmd_push_pull(args):
     if not pkgs:
         print("no packages matched")
     else:
-        print("team sharing: commit the .shelley/taste/ directory and teammates "
+        print("team sharing: commit the .taste/ directory and teammates "
               "get it via git — no cloud needed")
     return 0
 
@@ -1058,13 +1198,24 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="taste", description=__doc__.splitlines()[0])
     p.add_argument("--cwd", help="operate as if in this directory")
     p.add_argument("-g", "--global-scope", action="store_true",
-                   help="target the global scope (~/.config/shelley/taste) instead of the project")
+                   help="target the global scope (~/.config/taste) instead of the project")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    s = sub.add_parser("learn", help="distill learnings from a conversation (background)")
+    s = sub.add_parser("distill", help="generic: transcript JSON on stdin -> learnings JSON (any harness)")
+    s.add_argument("--merge", action="store_true", help="also write learnings into the store")
+    s.set_defaults(func=cmd_distill)
+
+    s = sub.add_parser("learn", help="shelley adapter: distill from a conversation id (background)")
     s.add_argument("conversation")
     s.add_argument("--dry-run", action="store_true")
-    s.set_defaults(func=cmd_learn)
+    s.set_defaults(func=cmd_learn_cli)
+
+    s = sub.add_parser("import", help="import a Command Code store (.commandcode/taste)")
+    s.add_argument("path", help="path to the .commandcode/taste directory")
+    s.set_defaults(func=cmd_import)
+
+    s = sub.add_parser("migrate", help="move legacy .shelley/taste stores to .taste")
+    s.set_defaults(func=cmd_migrate)
 
     s = sub.add_parser("cat", help="print a package's learnings in full (on-demand pull)")
     s.add_argument("package")

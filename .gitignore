@@ -4,6 +4,7 @@
 
 ### Shelley taste (personal, not for the team) ###
 .shelley/settings.local.json
+.taste/settings.local.json
 
 ### macOS ###
 # General
