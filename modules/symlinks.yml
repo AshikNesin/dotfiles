@@ -53,6 +53,11 @@ links:
     target: ~/.config/shelley/hooks/slash/websearch
   - source: modules/shelley/hooks/traces-sync.py
     target: ~/.config/shelley/hooks/traces-sync.py
+  # Agent skills (SKILL.md dirs; each skill is a directory, symlinked into
+  # Shelley's discovery path so it loads on any machine with dotfiles)
+  - source: skills/release-hub
+    target: ~/.config/shelley/release-hub
+    type: directory
   # # Example absolute paths
   # - source: /Users/ashiknesin/dotfiles/config/custom_app
   #   target: /Applications/custom_app/config
