@@ -88,11 +88,13 @@ When NOT to call it:
 #   subagent prompt  -> "Working directory: <dir>"
 # Then render the user's taste profile for that project. Fail-open: on any
 # error we still print the original prompt + prior appendix unchanged.
+# Read the incoming prompt once: both the pwd lookup and the final print need it.
+prompt=$(cat)
 taste_render=""
 # First token of the pwd line, minus trailing punctuation. The main prompt's
 # "Initial pwd: <dir>. Use the change_dir tool ..." is a full sentence, so we
 # cannot take the whole line; the subagent's "Working directory: <dir>" is bare.
-_dir=$(sed -nE 's/^(Initial pwd|Working directory): ([^ ,]+).*/\2/p' | head -1)
+_dir=$(printf "%s\n" "$prompt" | sed -nE 's/^(Initial pwd|Working directory): ([^ ,]+).*/\2/p' | head -1)
 _dir="${_dir%%.*}"; _dir="${_dir%,}"
 if [ -n "$_dir" ] && [ -d "$_dir" ]; then
   if command -v taste >/dev/null 2>&1; then
@@ -108,4 +110,4 @@ if [ -n "$taste_render" ]; then
 $taste_render"
 fi
 
-printf '%s\n%s\n' "$(cat)" "$appendix"
+printf '%s\n%s\n' "$prompt" "$appendix"
