@@ -10,18 +10,25 @@
 #   disk-cleanup            hourly pass — scratch + language caches (cheap)
 #   disk-cleanup --deep     daily pass — also build output, app caches, AVD state
 #   disk-cleanup --report   print the top space consumers, change nothing
+#   disk-cleanup --dry-run  print what a pass would delete, delete nothing
+#
+# Flags combine: disk-cleanup --deep --dry-run
 #
 # Scheduled: hourly at :07, daily at 04:30 (see crontab).
 #
 # Cron starts with a minimal PATH, so export everything the guards rely on.
 set -u
 MODE="hourly"
-case "${1:-}" in
-  --deep) MODE="deep" ;;
-  --report) MODE="report" ;;
-  --hourly|"") MODE="hourly" ;;
-  *) echo "usage: $(basename "$0") [--deep|--report]" >&2; exit 2 ;;
-esac
+DRY=0
+for arg in "$@"; do
+  case "$arg" in
+    --deep) MODE="deep" ;;
+    --report) MODE="report" ;;
+    --dry-run|--dry) DRY=1 ;;
+    --hourly) MODE="hourly" ;;
+    *) echo "usage: $(basename "$0") [--deep|--report] [--dry-run]" >&2; exit 2 ;;
+  esac
+done
 export PATH="$HOME/.local/bin:$HOME/.volta/bin:$HOME/dotfiles/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 LOG="$HOME/.local/state/disk-cleanup.log"
@@ -59,13 +66,19 @@ rm_path() {
   [ -e "$p" ] || return 0
   if busy "$p"; then log "skip (in use): $p"; return 0; fi
   local mb; mb=$(du -xsm -- "$p" 2>/dev/null | cut -f1)
+  if [ "$DRY" = 1 ]; then log "would remove ${mb:-?}MB $label: $p"; return 0; fi
   rm -rf -- "$p" 2>/dev/null && log "removed ${mb:-?}MB $label: $p"
 }
 
 # trim_dir <dir> <days> — drop files older than N days, then empty dirs.
 trim_dir() {
-  local d="$1" days="$2"
+  local d="$1" days="$2" n
   [ -d "$d" ] || return 0
+  if [ "$DRY" = 1 ]; then
+    n=$(find "$d" -type f -mtime "+$days" 2>/dev/null | wc -l)
+    [ "$n" -gt 0 ] && log "would trim $n files older than ${days}d in $d"
+    return 0
+  fi
   find "$d" -type f -mtime "+$days" -delete 2>/dev/null
   find "$d" -mindepth 1 -type d -empty -delete 2>/dev/null
 }
@@ -115,7 +128,12 @@ for entry in /tmp/*; do
 done
 
 # Stale log/probe files that live directly in /tmp (agents leave hundreds).
-find /tmp -maxdepth 1 -type f -mtime "+$TMP_DAYS" -size +1M -delete 2>/dev/null
+if [ "$DRY" = 1 ]; then
+  find /tmp -maxdepth 1 -type f -mtime "+$TMP_DAYS" -size +1M 2>/dev/null |
+    while IFS= read -r f; do log "would remove stale /tmp file: $f"; done
+else
+  find /tmp -maxdepth 1 -type f -mtime "+$TMP_DAYS" -size +1M -delete 2>/dev/null
+fi
 
 # ------------------------------------------------------- language caches ---
 # Go build cache: entries not touched in 7 days (content-addressed, safe to drop)
@@ -241,16 +259,9 @@ if [ "$MODE" = deep ]; then
       while IFS= read -r -d '' old; do rm_path "$old" "stale chrome profile"; done
   fi
 
-  # --- Volta: keep only the newest version of each installed package. ------
-  # (Node runtimes are managed separately and pinned via platform.json.)
-  for pkg in "$HOME/.volta/tools/image/packages"/*/; do
-    [ -d "$pkg" ] || continue
-    case "$(basename "$pkg")" in node|npm|pnpm|yarn) continue ;; esac
-    versions=$(ls -1 "$pkg" 2>/dev/null | wc -l)
-    [ "$versions" -gt 1 ] || continue
-    ls -1t "$pkg" 2>/dev/null | tail -n +2 |
-      while IFS= read -r old; do rm_path "$pkg/$old" "old volta package"; done
-  done
+  # --- Volta tools are left alone on purpose: its layout is
+  #     packages/<name>/{bin,lib} with no per-version directories, so there is
+  #     nothing there that can be pruned without breaking the tool.
 
   # --- rustup: drop toolchains that are not the default/active one. --------
   if command -v rustup >/dev/null; then
@@ -277,7 +288,12 @@ if [ "$MODE" = deep ]; then
 
   # --- Trash + oversized logs ---------------------------------------------
   trim_dir "$HOME/.local/share/Trash/files" 14
-  find "$HOME/.local/state" -maxdepth 1 -name '*.log' -size +20M -mtime +14 -delete 2>/dev/null
+  if [ "$DRY" = 1 ]; then
+    find "$HOME/.local/state" -maxdepth 1 -name '*.log' -size +20M -mtime +14 2>/dev/null |
+      while IFS= read -r f; do log "would remove oversized log: $f"; done
+  else
+    find "$HOME/.local/state" -maxdepth 1 -name '*.log' -size +20M -mtime +14 -delete 2>/dev/null
+  fi
 
   # --- Android emulator state ---------------------------------------------
   # userdata-qemu.img.qcow2 grows to several GB as the emulator runs. Dropping
