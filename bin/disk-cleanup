@@ -1,11 +1,27 @@
 #!/usr/bin/env bash
-# disk-cleanup — hourly janitor for rebuildable caches & stale temp files.
-# Safe by design: never touches active projects, toolchains, android-sdk,
-# AVDs, or anything modified recently / currently in use.
+# disk-cleanup — janitor for rebuildable caches, build output and stale scratch.
 #
-# Scheduled via cron (hourly). Cron starts with a minimal PATH, so export
-# everything the guards below rely on.
+# Safe by design: never touches source, toolchains (node/rust/android-sdk),
+# AVD definitions, or anything currently in use. Every delete is gated on
+# "nobody has it open, nobody's cwd is inside it, and nothing in it was
+# touched recently".
+#
+# Usage:
+#   disk-cleanup            hourly pass — scratch + language caches (cheap)
+#   disk-cleanup --deep     daily pass — also build output, app caches, AVD state
+#   disk-cleanup --report   print the top space consumers, change nothing
+#
+# Scheduled: hourly at :07, daily at 04:30 (see crontab).
+#
+# Cron starts with a minimal PATH, so export everything the guards rely on.
 set -u
+MODE="hourly"
+case "${1:-}" in
+  --deep) MODE="deep" ;;
+  --report) MODE="report" ;;
+  --hourly|"") MODE="hourly" ;;
+  *) echo "usage: $(basename "$0") [--deep|--report]" >&2; exit 2 ;;
+esac
 export PATH="$HOME/.local/bin:$HOME/.volta/bin:$HOME/dotfiles/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 LOG="$HOME/.local/state/disk-cleanup.log"
@@ -16,39 +32,100 @@ if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG" 2>/dev/null || echo 0)" -gt 5242880 ]
   : > "$LOG"
 fi
 
-log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
+log() { echo "[$(date '+%F %T')] [$MODE] $*" | tee -a "$LOG"; }
+
+# ------------------------------------------------------------- helpers -----
+
+# busy <path> — true if any process holds the path open or has its cwd inside.
+busy() {
+  local p="$1" c t
+  fuser -s -- "$p" 2>/dev/null && return 0
+  for c in /proc/[0-9]*/cwd; do
+    t=$(readlink "$c" 2>/dev/null) || continue
+    case "$t" in "$p"|"$p"/*) return 0 ;; esac
+  done
+  return 1
+}
+
+# touched_within <path> <days> — true if any file under path changed in N days.
+# find -quit makes the common "yes, recently used" case cheap.
+touched_within() {
+  [ -n "$(find "$1" -type f -newermt "-$2 days" -print -quit 2>/dev/null)" ]
+}
+
+# rm_path <path> [label] — delete only when not busy; logs size freed.
+rm_path() {
+  local p="$1" label="${2:-$(basename "$1")}"
+  [ -e "$p" ] || return 0
+  if busy "$p"; then log "skip (in use): $p"; return 0; fi
+  local mb; mb=$(du -xsm -- "$p" 2>/dev/null | cut -f1)
+  rm -rf -- "$p" 2>/dev/null && log "removed ${mb:-?}MB $label: $p"
+}
+
+# trim_dir <dir> <days> — drop files older than N days, then empty dirs.
+trim_dir() {
+  local d="$1" days="$2"
+  [ -d "$d" ] || return 0
+  find "$d" -type f -mtime "+$days" -delete 2>/dev/null
+  find "$d" -mindepth 1 -type d -empty -delete 2>/dev/null
+}
+
+# is_build_output <path> — true if the path is safe to delete as build output.
+# Refuses anything inside node_modules (installed packages ship their own
+# dist/) and anything git is tracking (a committed dist/ is a real artifact).
+is_build_output() {
+  local p="$1"
+  case "$p" in */node_modules/*|*/.git/*) return 1 ;; esac
+  if git -C "$p" rev-parse --git-dir >/dev/null 2>&1; then
+    git -C "$p" check-ignore -q -- "$p" 2>/dev/null || return 1
+  fi
+  return 0
+}
+
+# ------------------------------------------------------------- report -----
+if [ "$MODE" = report ]; then
+  echo "# top consumers under \$HOME"
+  du -xsh "$HOME"/* "$HOME"/.[a-zA-Z]* 2>/dev/null | sort -rh | head -20
+  echo "# top consumers on /"
+  du -xsh /tmp /var /usr /home /headless-shell 2>/dev/null | sort -rh
+  echo "# top 15 project caches under ~/Code"
+  find "$HOME/Code" -type d \( -name node_modules -o -name .git -o -name build -o -name dist \
+    -o -name .next -o -name target \) -prune -print0 2>/dev/null |
+    xargs -0 du -xsk 2>/dev/null | sort -rn | head -15 | awk '{printf "%.1f GB\t%s\n", $1/1048576, $2}'
+  exit 0
+fi
+
 freed_before=$(df --output=used -B1 / | tail -1)
+log "start (root at $(df --output=pcent / | tail -1 | tr -d ' %')%)"
 
 # ---------------------------------------------------------------- /tmp -----
-# Delete entries older than 48h, skipping system dirs and anything a running
-# process still holds.
+# Deep runs daily and uses a 24h window; hourly runs use 48h. Directories are
+# skipped when any process has them open or has its cwd inside.
+TMP_DAYS=1
+[ "$MODE" = deep ] && TMP_DAYS=0   # -mtime +0 == older than 24h
+[ "$MODE" = hourly ] && TMP_DAYS=1 # -mtime +1 == older than 48h
 for entry in /tmp/*; do
   [ -e "$entry" ] || continue
   case "$(basename "$entry")" in
     systemd-*|snap-private-tmp|.X11-unix|.ICE-unix|.font-unix|.XIM-unix|.Test-unix|hsperfdata_*) continue ;;
+    shelley-jobs|shelley-screenshots|shelley-output-*|chromedp-*|playwright_*) continue ;;
   esac
-  # -mtime +0 => older than 24h; use +1 => >48h window
-  if [ -z "$(find "$entry" -maxdepth 0 -mtime +1 2>/dev/null)" ]; then
-    continue
-  fi
-  # Skip if any process still has it open (user procs even without sudo)
-  if fuser -s "$entry" 2>/dev/null || sudo -n fuser -s "$entry" 2>/dev/null; then
-    continue
-  fi
-  rm -rf -- "$entry" 2>/dev/null
+  [ -n "$(find "$entry" -maxdepth 0 -mtime "+$TMP_DAYS" 2>/dev/null)" ] || continue
+  rm_path "$entry" "tmp scratch"
 done
+
+# Stale log/probe files that live directly in /tmp (agents leave hundreds).
+find /tmp -maxdepth 1 -type f -mtime "+$TMP_DAYS" -size +1M -delete 2>/dev/null
 
 # ------------------------------------------------------- language caches ---
 # Go build cache: entries not touched in 7 days (content-addressed, safe to drop)
 if [ -d "$HOME/.cache/go-build" ]; then
-  find "$HOME/.cache/go-build" -type f -mtime +7 -delete 2>/dev/null
-  find "$HOME/.cache/go-build" -mindepth 1 -type d -empty -delete 2>/dev/null
+  trim_dir "$HOME/.cache/go-build" 7
 fi
 
 # npm cache: entries older than 14 days
 if [ -d "$HOME/.npm/_cacache" ]; then
-  find "$HOME/.npm/_cacache" -type f -mtime +14 -delete 2>/dev/null
-  find "$HOME/.npm/_cacache" -mindepth 1 -type d -empty -delete 2>/dev/null
+  trim_dir "$HOME/.npm/_cacache" 14
 fi
 
 # pnpm store: prune unreferenced packages weekly (marker-file throttle)
@@ -62,7 +139,7 @@ fi
 # Prune node_modules/.git during traversal so hourly runs stay fast.
 find "$HOME/Code" -maxdepth 5 \( -name node_modules -o -name .git \) -prune -o \
   -type d -name target -mtime +7 -print0 2>/dev/null |
-  while IFS= read -r -d '' t; do rm -rf -- "$t"; done
+  while IFS= read -r -d '' t; do rm_path "$t" "rust target/"; done
 
 # ------------------------------------------------------- node_modules ------
 # Remove node_modules from projects not touched in 30 days. -prune makes
@@ -77,8 +154,7 @@ find "$HOME/Code" -type d -name node_modules -prune -print0 2>/dev/null |
     # "Touched" = any file OUTSIDE node_modules modified in the window:
     # source edits, installs, builds, git operations all count.
     if [ -z "$(find "$parent" -path "$nm" -prune -o -type f -mtime -30 -print -quit 2>/dev/null)" ]; then
-      rm -rf -- "$nm"
-      log "removed stale node_modules: $nm"
+      rm_path "$nm" "stale node_modules"
     fi
   done
 
@@ -99,6 +175,123 @@ fi
 
 # journald: cap at 100M
 sudo -n journalctl --vacuum-size=100M >/dev/null 2>&1
+
+# ================================================================= DEEP ====
+# Everything below runs once a day. Each pass is "unused for N days" gated.
+if [ "$MODE" = deep ]; then
+
+  # --- Gradle: caches + daemon logs. Fully rebuilt on the next build. -------
+  if [ -d "$HOME/.gradle/caches" ] && ! touched_within "$HOME/.gradle/caches" 7; then
+    if pgrep -x gradle >/dev/null || pgrep -f 'GradleDaemon' >/dev/null; then
+      log "skip (gradle running): ~/.gradle/caches"
+    else
+      rm_path "$HOME/.gradle/caches" "gradle caches"
+    fi
+  fi
+  trim_dir "$HOME/.gradle/daemon" 7
+
+  # --- Android build output in projects (intermediates are the big one). ---
+  find "$HOME/Code" -maxdepth 6 -type d -path '*/android/app/build' -prune -print0 2>/dev/null |
+    while IFS= read -r -d '' b; do
+      is_build_output "$b" || continue
+      touched_within "$b" 14 || rm_path "$b" "android app/build"
+    done
+  find "$HOME/Code" -maxdepth 6 -type d -path '*/android/build' -prune -print0 2>/dev/null |
+    while IFS= read -r -d '' b; do
+      is_build_output "$b" || continue
+      touched_within "$b" 14 || rm_path "$b" "android build"
+    done
+  # Project-local .gradle dirs
+  find "$HOME/Code" -maxdepth 6 -type d -name .gradle -path '*/android/*' -prune -print0 2>/dev/null |
+    while IFS= read -r -d '' b; do
+      is_build_output "$b" || continue
+      touched_within "$b" 14 || rm_path "$b" "project .gradle"
+    done
+
+  # --- JS/iOS build output next to a package.json, untouched for 30 days. ---
+  # is_build_output keeps this away from node_modules/**/dist and from any
+  # build dir git actually tracks.
+  for name in .next dist .turbo .parcel-cache coverage; do
+    find "$HOME/Code" -maxdepth 6 -type d -name "$name" -prune -print0 2>/dev/null |
+      while IFS= read -r -d '' b; do
+        parent="$(dirname "$b")"
+        [ -f "$parent/package.json" ] || continue
+        is_build_output "$b" || continue
+        touched_within "$b" 30 || rm_path "$b" "js build output"
+      done
+  done
+  find "$HOME/Code" -maxdepth 6 -type d -name Pods -prune -print0 2>/dev/null |
+    while IFS= read -r -d '' b; do
+      touched_within "$b" 30 || rm_path "$b" "CocoaPods Pods/"
+    done
+
+  # --- Playwright: keep the 2 newest revisions of each browser build. ------
+  # Revisions are numeric suffixes (chromium-1228, ffmpeg-1011), so compare
+  # them as versions — mtime order picks whichever unpacked last, not newest.
+  if [ -d "$HOME/.cache/ms-playwright" ]; then
+    for fam in $(ls -1 "$HOME/.cache/ms-playwright" 2>/dev/null | sed 's/-[0-9]\+$//' | sort -u); do
+      ls -1 "$HOME/.cache/ms-playwright" 2>/dev/null | grep -E "^${fam}-[0-9]+$" |
+        sort -t- -k2 -n | head -n -2 |
+        while IFS= read -r old; do rm_path "$HOME/.cache/ms-playwright/$old" "old browser build"; done
+    done
+  fi
+  # chrome-for-testing leaves throwaway profile dirs behind; drop stale ones.
+  if [ -d "$HOME/.cache/google-chrome-for-testing-headless" ]; then
+    find "$HOME/.cache/google-chrome-for-testing-headless" -mindepth 1 -maxdepth 1 -mtime +14 -print0 2>/dev/null |
+      while IFS= read -r -d '' old; do rm_path "$old" "stale chrome profile"; done
+  fi
+
+  # --- Volta: keep only the newest version of each installed package. ------
+  # (Node runtimes are managed separately and pinned via platform.json.)
+  for pkg in "$HOME/.volta/tools/image/packages"/*/; do
+    [ -d "$pkg" ] || continue
+    case "$(basename "$pkg")" in node|npm|pnpm|yarn) continue ;; esac
+    versions=$(ls -1 "$pkg" 2>/dev/null | wc -l)
+    [ "$versions" -gt 1 ] || continue
+    ls -1t "$pkg" 2>/dev/null | tail -n +2 |
+      while IFS= read -r old; do rm_path "$pkg/$old" "old volta package"; done
+  done
+
+  # --- rustup: drop toolchains that are not the default/active one. --------
+  if command -v rustup >/dev/null; then
+    keep=$(rustup show active-toolchain 2>/dev/null | awk '{print $1}')
+    for tc in "$HOME/.rustup/toolchains"/*; do
+      [ -d "$tc" ] || continue
+      [ "$(basename "$tc")" = "$keep" ] && continue
+      rm_path "$tc" "unused rust toolchain"
+    done
+  fi
+  trim_dir "$HOME/.cargo/registry/cache" 30
+
+  # --- Misc ~/.cache subtrees (rebuildable, keyed by tool). ----------------
+  for d in pip uv pre-commit node-gyp typescript prisma; do
+    [ -d "$HOME/.cache/$d" ] || continue
+    touched_within "$HOME/.cache/$d" 30 || rm_path "$HOME/.cache/$d" "stale ~/.cache"
+  done
+
+  # --- npx package cache: entries re-download on next use. ----------------
+  if [ -d "$HOME/.npm/_npx" ]; then
+    find "$HOME/.npm/_npx" -mindepth 1 -maxdepth 1 -type d -mtime +30 -print0 2>/dev/null |
+      while IFS= read -r -d '' n; do rm_path "$n" "npx cache entry"; done
+  fi
+
+  # --- Trash + oversized logs ---------------------------------------------
+  trim_dir "$HOME/.local/share/Trash/files" 14
+  find "$HOME/.local/state" -maxdepth 1 -name '*.log' -size +20M -mtime +14 -delete 2>/dev/null
+
+  # --- Android emulator state ---------------------------------------------
+  # userdata-qemu.img.qcow2 grows to several GB as the emulator runs. Dropping
+  # it just resets the AVD to factory data; the AVD definition is untouched.
+  # Only when no emulator is running and the AVD has been idle for 14 days.
+  if ! pgrep -f 'qemu-system|emulator64|emulator @' >/dev/null; then
+    for qcow in "$HOME/.android/avd"/*.avd/userdata-qemu.img.qcow2; do
+      [ -f "$qcow" ] || continue
+      if ! touched_within "$(dirname "$qcow")" 14; then
+        rm_path "$qcow" "AVD userdata (resets emulator data)"
+      fi
+    done
+  fi
+fi
 
 # ------------------------------------------------------------ summary -----
 freed_after=$(df --output=used -B1 / | tail -1)
