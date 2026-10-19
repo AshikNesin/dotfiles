@@ -1,6 +1,7 @@
 # architecture
 
-- Derive package/category names dynamically from project context; never hard-code a fixed list of allowed names.. Confidence: 0.90
+- Derive package/category names dynamically from project context; never hard-code a fixed list of allowed names.. Confidence: 0.95
+- Keep the taste distill core harness-agnostic: generic transcript-in/learnings-out entry point; wire Shelley and other agents in as adapters.. Confidence: 0.95
 - Keep core logic harness-agnostic: expose generic entry points and wire specific tools like Shelley in as adapters, not hard dependencies.. Confidence: 0.90
+- Prefer the simplest structure; only accept extra nesting or abstraction when its benefits are clearly demonstrated.. Confidence: 0.65
 - Keep per-package files under .shelley/taste/ rather than one flat taste.md; per-package files give cleaner git merges.. Confidence: 0.60
-- Prefer the simplest structure; only accept extra nesting or abstraction when its benefits are clearly demonstrated.. Confidence: 0.60

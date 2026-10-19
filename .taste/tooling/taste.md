@@ -1,0 +1,23 @@
+# tooling
+
+- Use Upsy for memory, files, and the logged-in cloud browser by default; prefer it over other connectors even when the user doesn't mention it.. Confidence: 0.95
+- Use Upsy tools by default for browser, memory, and file tasks; switch to Upsy immediately when the user directs it.. Confidence: 0.95
+- Always use thinking models for LLM calls; no fallback logic for non-reasoning models is needed.. Confidence: 0.90
+- Default the vision CLI to luna with xhigh thinking instead of terra.. Confidence: 0.90
+- Turn one-off fixes into reusable scripts committed to ~/dotfiles (e.g. bin/) so the same problem can be fixed properly next time.. Confidence: 0.90
+- When tooling changes on a machine, update the dotfiles setup scripts to match in the same change.. Confidence: 0.90
+- Prefer exe.dev's internal LLM gateway over third-party services like OpenRouter for model access.. Confidence: 0.85
+- Register new symlinks in the existing symlink management file (modules/symlinks.yml) instead of creating them ad hoc.. Confidence: 0.85
+- Summarize web search results with cited source URLs.. Confidence: 0.85
+- Use Volta to manage Node.js and global npm tools; avoid system-wide installs that need sudo for npm -g.. Confidence: 0.85
+- Prefer keyless exe.dev edge proxies over direct API keys; set up gateway auth so new tools work out of the box.. Confidence: 0.80
+- Use the dotfiles bin/websearch script for web searches.. Confidence: 0.80
+- Guard optional tool inits in shell configs: check file/binary existence before sourcing so .bashrc never errors on machines missing them.. Confidence: 0.75
+- Set up passwordless SSH between machines: add keys to authorized_keys instead of relying on password auth.. Confidence: 0.75
+- When installing a new tool, also add its installation to the shared setup script so machine setups stay reproducible.. Confidence: 0.75
+- All my machines are on the tailnet; expect direct Tailscale connectivity when accessing them remotely.. Confidence: 0.70
+- Keep the vision CLI's curated models list to luna and terra only; don't add other models for now.. Confidence: 0.70
+- Keep tool configs and skills in the dotfiles repo and symlink them into tool-specific locations so setups stay portable.. Confidence: 0.70
+- All my machines are connected via Tailscale; treat tailnet connectivity as the security layer for remote access.. Confidence: 0.65
+- Install self-updating CLI tools under user-owned ~/.local/bin, not root-owned system paths, so updaters can replace the binary.. Confidence: 0.55
+- Make reusable fix scripts safe to rerun: --check dry-run mode, skip flags, env overrides, checksum verification, and backups before replacing binaries.. Confidence: 0.55

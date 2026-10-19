@@ -1,3 +1,22 @@
 # workflow
 
+- When I report a bug, find and fix the root cause — no surface patches or workarounds.. Confidence: 0.90
+- If a tool call fails, report the failure reason and continue the task instead of stopping.. Confidence: 0.85
+- Avoid hard forks; keep source customizations as minimal additive commits on a custom branch so upstream updates stay painless.. Confidence: 0.80
+- Dive deep first on new features: research the codebase, docs, and web before writing any code.. Confidence: 0.80
+- Expect terse bug reports (often just a screenshot); diagnose, fix, verify, and commit autonomously without asking clarifying questions.. Confidence: 0.80
+- After solving a problem, document the issue and its fix as a markdown note in ~/Learn.. Confidence: 0.75
+- When I say 'just do it', execute the fix directly yourself instead of handing me manual steps to run.. Confidence: 0.75
+- When distilling a workflow into a skill or doc, mine past conversation history for real commands and practice, not just code and READMEs.. Confidence: 0.75
+- After fixing how data is recorded, backfill all affected historical records, not just the current one.. Confidence: 0.70
+- Prefer executing fixes directly from your end rather than only handing the user manual instructions.. Confidence: 0.70
+- When an integration breaks, query the service's own API to learn the real persisted schema instead of guessing.. Confidence: 0.70
+- When setting limits, quantify the problem first and derive an optimal bound from data rather than guessing.. Confidence: 0.70
+- When the user rules out a case, drop defensive fallbacks for it and keep the patch minimal.. Confidence: 0.70
 - When adding a feature, dive deep first: thoroughly research the codebase and reference implementations before writing any code.. Confidence: 0.68
+- Verify fixes against the live UI end-to-end before reporting done; the user reviews rendered output and reports display bugs.. Confidence: 0.65
+- Clean up temporary resources (preview servers, throwaway DBs, caches) when work is done; leave nothing stray running.. Confidence: 0.60
+- Push commits to the remote as part of completing a fix; don't stop at commit and wait for a separate push request.. Confidence: 0.60
+- Verify environment assumptions (host, user, PATH) before diagnosing tool-availability problems.. Confidence: 0.60
+- Verify a newly written fix script by actually running it before considering the task done.. Confidence: 0.55
+- When driving browser sign-ins that need email verification, proceed with the flow and let the user relay the code back; don't hand the login off to them.. Confidence: 0.50

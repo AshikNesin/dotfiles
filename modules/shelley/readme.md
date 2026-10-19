@@ -33,7 +33,7 @@ OpenRouter proxy, then plain OpenRouter with `VISION_API_KEY`. Configure via
 `~/.config/vision/config.json` or `VISION_MODEL` / `VISION_BASE_URL` /
 `VISION_API_KEY` / `VISION_TIMEOUT`.
 
-Default model: `gpt-5.6-terra` (vision-capable, verified via `--probe`).
+Default model: `gpt-5.6-luna` (vision-capable, verified via `--probe`).
 
 ### Behavior notes (mirrors the Command Code doc)
 
