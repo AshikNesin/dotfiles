@@ -13,7 +13,9 @@ TRACES_BASE="${TRACES_BASE:-https://traces.int.exe.xyz}"
 TRACES_SHARE_HOST="${TRACES_SHARE_HOST:-https://traces.com}"
 # Disable the hook entirely (e.g. for an offline stretch) without uninstalling.
 # Sourced as a function, so all callers stay defined (as no-ops) when disabled.
-TRACES_DISABLED="${TRACES_DISABLE:-0}"
+# Currently DISABLED by default (user request): set the default back to 0 (or
+# export TRACES_DISABLE=0) to re-enable the whole Traces bridge.
+TRACES_DISABLED="${TRACES_DISABLE:-1}"
 # Agent identity recorded on every Shelley trace.
 TRACES_AGENT_ID="${TRACES_AGENT_ID:-shelley}"
 

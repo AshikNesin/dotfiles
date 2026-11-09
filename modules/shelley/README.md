@@ -39,6 +39,10 @@ Learning can be toggled per project (`taste disable` → `.shelley/settings.loca
 or user-wide (`taste disable --user` → `~/.config/shelley/config.json`); default on.
 Kill switch: `export TASTE_DISABLE=1`. State/log: `~/.cache/shelley-taste/`.
 
+> **Currently off (user request, non-destructive):** hook-driven learning and
+> prompt injection are disabled at the hook level — set `TASTE_LEARN=1` in
+> `hooks/end-of-turn` and `TASTE_INJECT=1` in `hooks/system-prompt` to re-enable.
+
 Common commands:
 ```sh
 taste status                          # settings, packages, injection size
@@ -93,3 +97,7 @@ The share URL is always `https://traces.com/s/shelley-<conversation-id>`.
 
 None on the VM — the exe.dev edge proxy injects it. No secret is stored
 locally. Disable for a stretch with `export TRACES_DISABLE=1`.
+
+> **Currently off (user request, non-destructive):** the bridge is disabled
+> by default (`TRACES_DISABLED` defaults to 1 in `hooks/traces-lib.sh`).
+> Re-enable by flipping that default back to 0.

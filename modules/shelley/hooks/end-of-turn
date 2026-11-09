@@ -16,13 +16,22 @@ INPUT="$(cat)"
 conv_id=$(printf '%s' "$INPUT" | jq -r '.conversation_id // empty')
 [ -n "$conv_id" ] || exit 0
 
-# Refresh model metadata (conversation may have switched models mid-flight).
-model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
-[ -n "$model" ] && traces_guard traces_upsert "$conv_id" "" "" "model=$model"
+# TASTE: disabled for now — set TASTE_LEARN=1 to re-enable background learning.
+TASTE_LEARN=0
 
-# Full typed sync of everything that happened this turn (and anything the
-# earlier hooks could not see: thinking, tool calls, tool results).
-traces_guard python3 "$_TRACES_HOOK_DIR/traces-sync.py" "$conv_id"
+# Traces sync disabled for now — re-enable by flipping TRACES_DISABLED's
+# default in traces-lib.sh back to 0.
+if [ "$TRACES_DISABLED" != "1" ]; then
+  # Refresh model metadata (conversation may have switched models mid-flight).
+  model=$(printf '%s' "$INPUT" | jq -r '.model // empty')
+  if [ -n "$model" ]; then
+    traces_guard traces_upsert "$conv_id" "" "" "model=$model"
+  fi
+
+  # Full typed sync of everything that happened this turn (and anything the
+  # earlier hooks could not see: thinking, tool calls, tool results).
+  traces_guard python3 "$_TRACES_HOOK_DIR/traces-sync.py" "$conv_id"
+fi
 
 # TASTE: fire the background learner for this conversation (detached,
 # fire-and-forget). `taste learn` reads the transcript from Shelley's DB,
@@ -30,13 +39,15 @@ traces_guard python3 "$_TRACES_HOOK_DIR/traces-sync.py" "$conv_id"
 # It holds a global flock, so multiple rapid end-of-turns queue up safely;
 # state-per-conversation makes dropping a run harmless (the next one
 # catches up). Never blocks or breaks this hook: fully guarded.
-_taste_bin=""
-if command -v taste >/dev/null 2>&1; then
-  _taste_bin="taste"
-elif [ -x "$HOME/dotfiles/bin/taste" ]; then
-  _taste_bin="$HOME/dotfiles/bin/taste"
-fi
-if [ -n "$_taste_bin" ]; then
-  mkdir -p "${TASTE_STATE_DIR:-$HOME/.cache/taste}"
-  setsid "$_taste_bin" learn "$conv_id" >/dev/null 2>&1 <&- &
+if [ "$TASTE_LEARN" = "1" ]; then
+  _taste_bin=""
+  if command -v taste >/dev/null 2>&1; then
+    _taste_bin="taste"
+  elif [ -x "$HOME/dotfiles/bin/taste" ]; then
+    _taste_bin="$HOME/dotfiles/bin/taste"
+  fi
+  if [ -n "$_taste_bin" ]; then
+    mkdir -p "${TASTE_STATE_DIR:-$HOME/.cache/taste}"
+    setsid "$_taste_bin" learn "$conv_id" >/dev/null 2>&1 <&- &
+  fi
 fi

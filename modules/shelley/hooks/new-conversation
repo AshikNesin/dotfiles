@@ -36,4 +36,6 @@ fi
 traces_guard traces_upsert "$conv_id" "$title" private "${meta[@]:-}"
 # Seed sync state so end-of-turn's incremental sync doesn't backfill the
 # opening prompt twice (it is part of the same DB row we already would sync).
-traces_guard python3 "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")/traces-sync.py" --init-only "$conv_id"
+# Skipped along with the rest when the bridge is disabled.
+[ "$TRACES_DISABLED" = "1" ] || \
+  traces_guard python3 "$(dirname "$(readlink -f "${BASH_SOURCE[0]:-$0}")")/traces-sync.py" --init-only "$conv_id"
